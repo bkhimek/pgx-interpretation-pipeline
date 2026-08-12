@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Evidence cache — NEVER commit third-party evidence data (see docs/DATA_SOURCES_AND_LICENSING.md)
+.cache/
+*cache/pgx-interpreter/
+
+# Nextflow (Phase 9+)
+work/
+.nextflow/
+.nextflow.log*
+
+# Raw sequence data — never commit
+*.fna
+*.fasta
+*.fa
+*.bam
+*.cram
+*.fastq
+*.fastq.gz
+*.vcf.gz.tbi
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

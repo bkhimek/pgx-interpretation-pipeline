@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pgx-interpretation-pipeline"
+version = "0.0.1"
+description = "Reproducible pharmacogenomics interpretation workflow: VCF -> allele/diplotype -> functional phenotype -> guideline-linked drug recommendation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Krzysztof Gizynski" }]
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["pgx_interpreter*"]
