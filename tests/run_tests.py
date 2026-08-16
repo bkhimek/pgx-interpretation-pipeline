@@ -13,8 +13,9 @@ module, using plain ``assert`` statements — no external dependencies, no
 test framework magic. Mirrors the pattern used by the
 CAPN3-DMD-variant-classifier project's tests/run_tests.py.
 
-Usage:
-    PYTHONPATH=src python3 tests/run_tests.py
+Usage (from the repo root -- no src/ layout here, pgx_interpreter/ sits at
+repo root per Plan §6):
+    PYTHONPATH=. python3 tests/run_tests.py
 """
 from __future__ import annotations
 

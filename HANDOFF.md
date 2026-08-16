@@ -44,3 +44,36 @@ Before Phase 0's zip was even landed, review of the first delivery caught real g
 - On a successful, non-empty sync, the processed zip is moved to `zip_files/archive/` (timestamped) so a later run can't accidentally re-pick it. This happens right after sync, not after your `git commit` — the script doesn't commit for you, so it can't gate archiving on an action it doesn't perform. If you don't end up committing a given sync, the zip is still recoverable from `zip_files/archive/`.
 
 **Zip files actually live in `PGx_Project/zip_files/`** (confirmed 2026-08-12, corrected from an earlier assumed `incoming/` folder that was never real) — `INCOMING_DIR`'s default now points there directly, no extra folder needs creating.
+
+---
+
+## 2026-08-12 — Session 1 addendum 2 (sync_batch.sh v3 -> v4, real-run bug)
+
+First real sync against the actual WSL repo (v3 zip) surfaced a genuine bug the sandbox testing missed: the "full resulting file tree" print used `find ... -not -path '*/.git*'` to exclude git internals, but that pattern also matches `.github/` and `.gitignore` (and the `.gitkeep` placeholder files) since they all start with `.git` — so the tree print was silently hiding real, correctly-synced files. The actual `rsync` step uses a separate, precise `--exclude '.git/'` and was never affected — the real repo has always had the correct contents; only the terminal display was wrong. Confirmed against the pasted sync output: `git status --porcelain` (unaffected by this bug) correctly showed `.github/` and `.gitignore` as synced; the tree print beneath it did not.
+
+**Fix:** pattern changed to `*/.git/*` (trailing slash required), which only matches paths with an actual `.git/` directory component. Re-verified in the sandbox — `.github/workflows/ci.yml`, `.gitignore`, and all `.gitkeep` placeholders now appear correctly.
+
+**No resync needed for the batch already landed** — your repo's content was correct throughout; the fixed script arrives automatically with the next batch you sync (it overwrites `sync_batch.sh` like everything else). Mentioning it here mainly as a case-study data point: the tree-print safety feature added specifically to catch a "file present but wrong/hidden" failure mode had exactly that failure mode itself, caught only by a real run against a real repo, not by sandbox testing with synthetic fixtures — worth remembering when Phase 7's validation work asks "how much does testing in the sandbox actually prove."
+
+---
+
+## 2026-08-12 — Session 2 (Phase 1)
+
+**Environment:** Same Cowork sandbox (Mode A). PyPI access confirmed again this session — `pytest` installed and ran cleanly, verified alongside `tests/run_tests.py` before packaging (9/9 pass under both).
+
+**Done this session:**
+- `pgx_interpreter/models.py` — the Phase 1 data model: `ObservedVariant` (Layer 1), `AlleleCall`/`Diplotype` (Layer 2, with explicit `PhaseStatus` incl. `unphased_ambiguous`), `PhenotypeAssignment` (Layer 3, with `activity_score` field from day one), `RecommendationResult` (Layer 4, unpopulated until Phase 5), and the top-level `PGxResult` aggregate with `.to_dict()`. Two-tier evidence provenance (`AlleleDefinitionProvenance`, `PhenotypeEvidenceProvenance`, `RecommendationEvidenceProvenance`) kept as separate dataclasses per Plan §4, not one undifferentiated `evidence_source`/`evidence_version` pair. All frozen dataclasses, stdlib only (no pydantic, matching the classifier project's dependency-minimization convention).
+- `pgx_interpreter/schema.py` — JSON Schema (draft-07) for the flattened `PGxResult` dict, plus a small dependency-free `validate()` structural checker (not a full schema engine — checks required fields, enum values, and unexpected fields).
+- `tests/test_models.py` — 9 tests. The TPMT `*1/*3C` case is the exact worked example from Plan §5 Phase 1: the expected `to_dict()` output was hand-derived and written into the test *before* running anything, then asserted against verbatim — matched exactly on first real run, no discrepancies to reconcile. Also covers: schema validation of that same example, `unphased_ambiguous` representability (TPMT `*3A` case, Plan §3a — structural proof only, not the real Phase 2 caller logic), a populated `activity_score` (DPYD-style), `recommendation_evidence_*` fields staying `None` pre-Phase-5, an explicit `None` for a missing second allele rather than a silently shortened list (Plan §8), full `Confidence` enum coverage of the guardrail states, and two schema-rejection cases (bad enum value, unexpected field).
+- **Found and fixed a real bug from Phase 0:** `sync_batch.sh`, `.github/workflows/ci.yml`, `README.md`, and `tests/run_tests.py` all referenced `PYTHONPATH=src`, copied from the classifier project's different (src-layout) repo without checking that *this* repo has no `src/` — `pgx_interpreter/` sits at the repo root per Plan §6. Would have surfaced as an `ImportError` the moment tests tried to `import pgx_interpreter`. Fixed to `PYTHONPATH=.` in all four places before it could bite. Caught here specifically because Phase 1 was the first time a test actually needed to import the package — worth remembering that some Phase 0 scaffolding can't be fully verified until real code exists to run against it.
+
+**Verified before packaging:** both `pytest` and `tests/run_tests.py` run from a clean copy of the repo, `PYTHONPATH=.`, 9/9 pass under each.
+
+**Not done yet (deliberately deferred):**
+- Gene-specific logic (TPMT variant extraction/allele recognition/diplotype assignment/phenotype translation) — Phase 2, next session.
+- `from_dict()` / deserialization — not needed yet; Phase 2's fixtures will most likely be YAML (PyYAML is already a declared dependency) rather than round-tripping `PGxResult` JSON, so this is deferred until it's actually needed rather than built speculatively.
+- `docs/ARCHITECTURE.md` — still just a named future file in the Plan §6 structure, not written; Phase 1's data model is documented via `models.py`'s module docstring instead for now.
+
+**Next session should:**
+1. Sync this batch (same `sync_batch.sh` flow as Phase 0 — zip lands in `PGx_Project/zip_files/`, script picks it up), review diff/tree, commit ("Phase 1: data model, JSON schema, unit tests"), push (should now go smoothly with `gh auth login` set up).
+2. Start Phase 2: TPMT — variant extraction, allele recognition, diplotype assignment, phenotype translation (Tier 1 evidence), plus the `*3A` vs `*3B`/`*3C` unphased-ambiguity fixture using real variant coordinates (Plan §3a, §5 Phase 2). This is where `phase_status=unphased_ambiguous` gets exercised by real caller logic for the first time, not just proven representable.

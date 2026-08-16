@@ -155,7 +155,11 @@ git --no-pager status --porcelain
 
 echo
 log "Full resulting file tree (post-sync, excluding .git/):"
-find "$REPO_DIR" -not -path '*/.git*' -type f | sed "s|^$REPO_DIR/||" | sort
+# NB: the exclude pattern requires the trailing slash ('*/.git/*') — a bare
+# '*/.git*' also matches .github/ and .gitignore (they start with ".git")
+# and would silently hide them from this listing. Caught in real use on
+# 2026-08-12: the repo synced fine, but this print was lying about it.
+find "$REPO_DIR" -not -path '*/.git/*' -type f | sed "s|^$REPO_DIR/||" | sort
 
 echo
 CHANGED_TOP_LEVEL="$(git --no-pager diff --name-only HEAD -- . 2>/dev/null; git --no-pager diff --name-only --cached 2>/dev/null; git --no-pager status --porcelain | awk '{print $2}')"
@@ -176,13 +180,17 @@ done <<< "$CHANGED_TOP_LEVEL"
 
 # --- Step 7: tests ---------------------------------------------------------------
 log "Running test suite..."
+# No src/ layout in this repo (pgx_interpreter/ sits at repo root, per Plan
+# §6) -- PYTHONPATH=. not PYTHONPATH=src. Fixed in Phase 1 after the
+# original Phase 0 scaffold copied the wrong convention from the
+# classifier project's different (src-layout) repo.
 if command -v pytest >/dev/null 2>&1; then
-  PYTHONPATH=src pytest -q || log "pytest reported failures — review before committing."
+  PYTHONPATH=. pytest -q || log "pytest reported failures — review before committing."
 else
   log "pytest not available — falling back to tests/run_tests.py"
 fi
 if [ -f "tests/run_tests.py" ]; then
-  PYTHONPATH=src python3 tests/run_tests.py || log "run_tests.py reported failures — review before committing."
+  PYTHONPATH=. python3 tests/run_tests.py || log "run_tests.py reported failures — review before committing."
 fi
 
 # --- Step 8: archive the zip so it can't be re-picked ---------------------------

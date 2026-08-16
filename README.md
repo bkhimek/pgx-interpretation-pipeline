@@ -79,8 +79,8 @@ pgx-interpretation-pipeline/
 Developed via Claude Cowork sessions (isolated sandbox, no direct WSL access) and synced into a local WSL repo — see `sync_batch.sh` and the project's `DEVELOPMENT_WORKFLOW.md` for the full process.
 
 ```bash
-PYTHONPATH=src pytest -q                 # if PyPI access is available
-PYTHONPATH=src python3 tests/run_tests.py  # dependency-free fallback, always works
+PYTHONPATH=. pytest -q                 # if PyPI access is available
+PYTHONPATH=. python3 tests/run_tests.py  # dependency-free fallback, always works
 ```
 
 ## License
