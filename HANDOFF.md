@@ -174,3 +174,37 @@ The real Phase 1 sync against the WSL repo hit a `ModuleNotFoundError: No module
 **Next session should:**
 1. Sync this batch, review diff/tree, commit ("Phase 4: SLCO1B1 — transport-function diplotype lookup, three-gene v0.1 engine complete"), push.
 2. Write `docs/ARCHITECTURE_REVIEW_V01.md` — pause feature development here per the plan's explicit checkpoint discipline, answering the six questions in Plan §5 with reference to the real code across all three gene modules, not just a status recap.
+
+---
+
+## 2026-08-16 — Session 4 continued (Architecture Review 1)
+
+Pure documentation/reflection milestone, per Plan §5's explicit checkpoint discipline — no gene-calling code changed this session. Before writing anything, re-grepped the actual repository rather than relying on memory of what was built, to make sure every claim in the review is checkable against real code, not a paraphrase of intent:
+
+- `grep -rn "UNRESOLVED" pgx_interpreter/` — confirmed `Confidence.UNRESOLVED` is defined in `models.py` and referenced nowhere else except a structural enum-coverage test; no real gene module has ever produced it.
+- `grep -rn "genotype_quality"` — confirmed `ObservedVariant.genotype_quality` has never been populated by `normalize.py`'s `parse_vcf()` or read by any gene module.
+- `grep -rln "validate("` across `pgx_interpreter/` and `tests/` — confirmed `schema.validate()` is exercised only by `tests/test_models.py` against a hand-built example, never by any of the three real `call_*` pipelines.
+- `grep -n "alternative_diplotypes" pgx_interpreter/genes/*.py` — confirmed it's populated by `tpmt.py` and `slco1b1.py` but never referenced in `dpyd.py` at all.
+- `grep -c "_zygosity_at" pgx_interpreter/genes/*.py` — confirmed the zygosity-vocabulary helper is independently reimplemented (not shared) in all three gene modules.
+
+**Wrote `docs/ARCHITECTURE_REVIEW_V01.md`**, answering all six of Plan §5's questions with direct reference to these findings:
+
+1. **Genuinely universal**: the Layer 1-4 data model unmodified since Phase 1, the two-tier evidence provenance split, `Confidence`'s non-"supported" states as real load-bearing vocabulary, the zygosity concept (six states), the "models → genes is one-way" local-import pattern.
+2. **Correctly stayed gene-specific**: free-text `phenotype` (let SLCO1B1 use "function" terms without any schema change), `activity_score` populated only by DPYD, DPYD's four-independent-locus control flow vs. TPMT/SLCO1B1's single-haplotype-block model, `alternative_diplotypes` populated by two of three genes and not the third by design.
+3. **Assumptions removed/generalized**: the plan's own "SLCO1B1 is single-variant-driven" description, corrected during Phase 4 research; DPYD's D949V function classification, corrected during Phase 3 research; `alternative_diplotypes` itself, added additively in Phase 2 once TPMT's `*3A` case proved a single-diplotype field insufficient.
+4. **Phase 1 fields that turned out unused**: `Confidence.UNRESOLVED` and `ObservedVariant.genotype_quality`, both defined ahead of a consumer that hasn't materialized in three real gene implementations — contrasted directly with `activity_score`, which *was* added ahead of a consumer (DPYD) that materialized exactly as anticipated. Also flagged `schema.validate()` as defined-but-unwired — a real gap worth closing once Phase 6's report layer gives it one place to run.
+5. **Special-case logic**: DPYD's HapB3 intronic/exonic dual-variant handling (unique among DPYD's four loci), and TPMT's *2-locus-clean-before-*1/*1 rule (which SLCO1B1's narrower current scope never triggers, not because SLCO1B1 doesn't need the same kind of rule in principle).
+6. **Biologically justified vs. technical debt**: HapB3's special-casing is biologically justified (real incomplete-LD population-genetics finding, not implementation convenience). The TPMT/SLCO1B1 structural duplication (`_zygosity_at`, `_find_variant`, `_undetermined_diplotype`, and the two-linked-variant dosage truth table itself, confirmed to be the same nine-branch shape in both `_call_3_family_diplotype` and `_call_slco1b1_diplotype`) **is** real technical debt, deliberately left unaddressed until this checkpoint rather than guessed at after TPMT alone.
+
+**Concrete recommendation for next session, not just an observation:** extract the zygosity-vocabulary helpers (`_zygosity_at`, `_find_variant`, `_undetermined_diplotype`, `UNDETERMINED`) into a shared `pgx_interpreter/genes/_shared.py` — proven gene-agnostic three times over with zero divergence. Do **not** yet extract the two-linked-variant dosage truth table itself into one shared function; two data points (TPMT, SLCO1B1) is enough to notice the pattern, not enough to commit to the right shared interface, especially with CYP2C19's real complexity (structural-variant-adjacent considerations per Plan §9) still ahead. Revisit that specific question once CYP2C19 exists as a third data point.
+
+**Verified before packaging:** re-ran the full test suite (still 50/50, unchanged — this session touched no gene-calling code) to confirm the review's claims about test coverage are current, not stale.
+
+**Not done yet (deliberately deferred):**
+- The shared-helper refactor itself — recommended above, not executed this session. Architecture Review 1 is a decision point, not an implementation session; doing the refactor in the same session as writing the review would have skipped the "pause and actually decide" step the plan's checkpoint discipline is for.
+- CYP2C19 (Phase 8) — next, now unblocked.
+- Root `CLAUDE.md` project-list entry — still not added.
+
+**Next session should:**
+1. Sync this batch, review diff, commit ("Architecture Review 1: universal vs. gene-specific concepts, unused schema fields, shared-helper refactor recommendation"), push.
+2. Either (a) do the recommended `_shared.py` extraction as a small, low-risk cleanup before CYP2C19, or (b) proceed straight to CYP2C19 and let its real requirements inform whether the extraction (and possibly a second one, for the dosage truth table) is worth doing at that point instead. Worth asking the user which they'd prefer, since it's a real scope/sequencing choice rather than a technical question with one right answer.

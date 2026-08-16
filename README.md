@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** Phase 4 — TPMT, DPYD, and SLCO1B1 all implemented end to end (VCF → variant extraction → allele/diplotype calling → phenotype translation), the three-gene v0.1 engine the plan targets. Each uses a different phenotype-assignment model by design (diplotype lookup / activity-score summation / transport-function framing). Architecture Review 1 is next, before CYP2C19.
+**Status:** Architecture Review 1 complete — TPMT, DPYD, and SLCO1B1 all implemented end to end (VCF → variant extraction → allele/diplotype calling → phenotype translation), the three-gene v0.1 engine the plan targets. Each uses a different phenotype-assignment model by design (diplotype lookup / activity-score summation / transport-function framing). See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific, and what's next before CYP2C19.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -37,7 +37,7 @@ Not a validated clinical diagnostic system, not an autonomous prescribing system
 - `docs/DATA_SOURCES_AND_LICENSING.md` — full licensing audit for every external data/software source
 - `THIRD_PARTY_DATA.md` — quick-reference summary of the above
 - `docs/GENE_SCOPE.md` — per-gene allele coverage, defining variants, and explicit known limitations
-- `docs/ARCHITECTURE_REVIEW_V01.md` — planned after TPMT + DPYD + SLCO1B1 (Architecture Review 1 milestone)
+- `docs/ARCHITECTURE_REVIEW_V01.md` — Architecture Review 1 (after TPMT + DPYD + SLCO1B1): what's universal vs. gene-specific, what schema fields turned out unused, and a concrete refactor recommendation for CYP2C19
 - `docs/VALIDATION.md` — planned for Phase 7
 
 ## Architecture
