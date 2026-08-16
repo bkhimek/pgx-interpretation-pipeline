@@ -245,3 +245,34 @@ Root cause, confirmed by direct inspection rather than guessed at, and initially
 **Next session should:**
 1. Sync this batch — first real end-to-end test that the executable-bit fix actually works: confirm `./sync_batch.sh` runs without needing a manual `chmod +x` first. Review diff, commit ("Post-Architecture-Review-1 cleanup: extract shared zygosity helpers, fix sync_batch.sh executable-bit packaging bug"), push.
 2. Start Phase 8: CYP2C19 — the plan's designated fourth gene, and the real test of whether the shared-helper boundary drawn in this session (and the deliberately-not-yet-shared dosage truth table) still looks right with a more complex gene in the picture.
+
+---
+
+## 2026-08-16 — Session 6 (Phase 5 prep: TPMT re-verified against 2025/2026 CPIC update)
+
+Before resuming feature work, user caught a real sequencing slip: I had twice pointed at "CYP2C19 next" in this document and in chat, skipping Phase 5 (Tier 2 drug-recommendation evidence integration), Phase 6 (report layer), and Phase 7 (validation/GeT-RM). User asked "Shouldn't do Phase 5 now?" — confirmed against the plan directly; they were right. Course corrected: Phase 5 is next, not CYP2C19. (Not retroactively fixing the two prior HANDOFF entries that said otherwise — leaving them as an honest record of the mistake.)
+
+**Reviewed Plan §4/§4a (evidence/licensing architecture) with the user before starting**, then began real research into `api.clinpgx.org` for the Tier 2 adapter (fetch → validate → stamp version/date → cache locally, gitignored, 2 req/sec rate limit per ClinPGx's confirmed limit). Confirmed the API does not expose phenotype-stratified dosing recommendations as structured JSON — the dosing table lives only as an HTML blob inside `textMarkdown.html` per guideline. Decided with the user (option "a" of two considered): the adapter fetches and caches the real guideline JSON for genuine source/version/citation provenance, paired with a hand-verified phenotype→recommendation-category mapping — extending Tier 1's already-established pattern — rather than attempting to parse the embedded HTML dosing tables programmatically.
+
+**That research surfaced a real, unplanned finding**, which the user chose to resolve before continuing (option "b" of two considered: pause and verify, rather than just note it and move on): CPIC published a 2025 update to the TPMT/NUDT15 thiopurine guideline (DOI 10.1002/cpt.70209, Jan 2026), with a further Table 1 correction in May/June 2026 (DOI 10.1002/cpt.70298) introducing a "decreased function" phenotype tier distinct from "no function." Since `tpmt.py` (Phase 2) was built from the 2018 guideline, this needed checking against the already-shipped, tested module before Phase 5 could safely build on top of it.
+
+**Verification performed, each step against a primary source directly, not a paraphrase:**
+- Fetched the actual correction PDF directly — got the corrected Table 1 text verbatim for both TPMT and NUDT15.
+- Ruled out NCBI Bookshelf `NBK100661` as evidence about the update — confirmed (via subagent extraction, page too large for direct context) that it's stale (last updated 2020), cites only the 2018 guideline, and its Table 4 matches the current `tpmt.py` implementation but can't speak to anything published after it.
+- Fetched the actual 2025 guideline PDF directly (via subagent extraction, 69KB/1,273 lines) — the raw Allele Functionality Table itself isn't printed in this PDF (linked externally to a JS-rendered ClinPGx page that returned no usable content), but Table 1's worked diplotype examples are strong direct evidence: `*1/*2`, `*1/*3A`, `*1/*3B`, `*1/*3C` all appear only under the Intermediate Metabolizer rule; `*3A/*3A`, `*2/*3A`, `*3A/*3C`, `*2/*3C` all appear only under the Poor Metabolizer rule — i.e., `*2`/`*3A`/`*3B`/`*3C` remain no-function in the current guideline. `*8` is the guideline's own decreased-function worked example, not any of this module's four alleles.
+- Queried `api.clinpgx.org/v1/data/guideline/PA166251442` directly for the top-level guideline summary, which states the May 2026 correction verbatim: "though the recommendations for IM and Possible IM are the same" — confirming no practical recommendation impact even for the diplotype combination it does affect.
+
+**Conclusion: no code change needed.** `tpmt.py`'s four implemented alleles are still correctly classified under the current, corrected 2025/2026 guideline. Documented this rather than silently closing the question:
+- `pgx_interpreter/genes/tpmt.py` — added a "Re-verified against the 2025/2026 CPIC update (2026-08-16)" subsection to the module docstring, with the evidence chain above and the explicit one remaining gap (the raw Allele Functionality Table itself was never directly retrieved, only inferred from two independent documents' worked examples — the `tpmtRefMaterials` page is JS-rendered and returned nothing usable). `PHENOTYPE_EVIDENCE_VERSION` deliberately left at `"2018"` — the rule implemented is still sourced from and matches that table; the note records independent re-verification, not a citation change. Also flagged explicitly that the real CPIC guideline is a joint TPMT/NUDT15 guideline and this project is TPMT-only.
+- `docs/GENE_SCOPE.md` — added the equivalent re-verification note to the TPMT section.
+
+**Verified:** documentation-only change this session — no test suite re-run needed (no code logic touched), consistent with the conclusion reached.
+
+**Not done yet (deliberately deferred):**
+- Phase 5 itself (Tier 2 drug-recommendation evidence adapter: `pgx_interpreter/evidence.py`, hand-derived expected evidence records for at least one case per gene, tests against the real JSON payloads already captured this session for SLCO1B1+simvastatin `PA166105005`, DPYD+fluorouracil `PA166122686`, TPMT+azathioprine `PA166104933`) — next, now unblocked.
+- Documenting DPYD's real dose-reduction percentages (50% for AS 1/1.5, ">50%" for homozygous D949V, "alternative drug" for AS 0/0.5) as part of Phase 5's evidence-record shape — Tier 1 doesn't model this; Tier 2 is exactly where it belongs.
+- Root `CLAUDE.md` project-list entry — still not added.
+
+**Next session should:**
+1. Sync this batch, review diff, commit ("Phase 5 prep: re-verify TPMT against 2025/2026 CPIC thiopurine guideline update — no code change needed, documented"), push.
+2. Resume Phase 5: design and implement `pgx_interpreter/evidence.py` (versioned fetch → validate → stamp → cache adapter, gitignored cache), using the confirmed design (real guideline JSON cached for provenance, paired with hand-verified phenotype→category mapping) and the three real guideline IDs already captured this session.

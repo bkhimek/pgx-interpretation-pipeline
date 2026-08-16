@@ -47,6 +47,50 @@ only in the intermediate/poor rows -- this module encodes that directly
 rather than re-deriving it, same "cite the real source" discipline as the
 DPYD HapB3 pattern noted in the project plan).
 
+### Re-verified against the 2025/2026 CPIC update (2026-08-16)
+
+CPIC published a 2025 update to this guideline (DOI 10.1002/cpt.70209,
+published Jan 2026), with a further Table 1 correction in May/June 2026
+(DOI 10.1002/cpt.70298). The update introduces a "decreased function"
+phenotype tier that doesn't exist in the 2018 table above, and the May 2026
+correction changes how a no-function + decreased-function diplotype is
+labeled (Intermediate Metabolizer rather than "Possible Intermediate
+Metabolizer").
+
+This module's four alleles (*2/*3A/*3B/*3C) were checked directly against
+the current guideline and confirmed unaffected:
+
+  - The 2025 guideline's own worked diplotype examples (Table 1) still place
+    *1/*2, *1/*3A, *1/*3B, *1/*3C only under the "one normal + one no
+    function -> Intermediate Metabolizer" rule, and *2/*3A, *3A/*3C, *2/*3C
+    only under "two no function -> Poor Metabolizer" -- identical to the
+    2018 table this module implements. None of the four are reclassified to
+    "decreased function"; the guideline's own decreased-function worked
+    example is *8, which is out of scope here as noted above.
+  - The May 2026 correction's labeling change applies only to no-function +
+    decreased-function diplotypes, which cannot occur within this module's
+    four-allele scope (none of *2/*3A/*3B/*3C are decreased-function).
+  - ClinPGx's own guideline summary (api.clinpgx.org, guideline
+    PA166251442) states the correction explicitly did not change any
+    recommendation: "though the recommendations for IM and Possible IM are
+    the same."
+  - Confirmed via the guideline PDF and the live ClinPGx guideline API
+    directly, not from a secondary source. The one gap: the raw TPMT Allele
+    Functionality Table itself (as opposed to its worked diplotype examples)
+    was not directly retrieved -- clinpgx.org's tpmtRefMaterials page is
+    JS-rendered and returned no usable content through this project's
+    fetch tooling.
+
+Net effect: no code change. `PHENOTYPE_EVIDENCE_VERSION` stays "2018"
+because the rule this module implements is still sourced from and matches
+the 2018 table; this note records that it has also been independently
+re-verified current as of 2026-08-16.
+
+Separately, note the real CPIC guideline this cites is a *joint*
+TPMT/NUDT15 guideline -- NUDT15 is out of scope for this project entirely
+(TPMT only), a limitation worth stating explicitly rather than leaving
+implicit.
+
 ## Phasing (Plan §3a)
 
 rs1800460 (*3B-defining) and rs1142345 (*3C-defining) sit on the same
