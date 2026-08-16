@@ -1,0 +1,10 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr1>
+##comment=Two DIFFERENT independent loci (*2A and *13) simultaneously heterozygous -- out of scope for this module (would require phasing across unlinked loci to know if they're in cis or trans, same problem class as TPMT's *2 + *3-family combination).
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr1	97082391	rs67376798	T	A	99	PASS	.	GT	0/0
+chr1	97450058	rs3918290	C	T	99	PASS	.	GT	0/1
+chr1	97515787	rs55886062	A	C	99	PASS	.	GT	0/1
+chr1	97573863	rs56038477	C	T	99	PASS	.	GT	0/0
+chr1	97579893	rs75017182	G	C	99	PASS	.	GT	0/0

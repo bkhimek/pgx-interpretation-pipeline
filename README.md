@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** Phase 2 — TPMT implemented end to end (VCF → variant extraction → allele/diplotype calling → phenotype translation). DPYD and SLCO1B1 not yet started.
+**Status:** Phase 3 — TPMT and DPYD implemented end to end (VCF → variant extraction → allele/diplotype calling → phenotype translation), each using a different phenotype-assignment model (diplotype lookup vs activity-score summation) by design. SLCO1B1 not yet started.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -52,7 +52,7 @@ Evidence is fetched via a versioned adapter (fetch → validate → stamp with r
 
 ## Repository structure
 
-Current state (Phase 2). The full target layout — `evidence.py` (Phase 5), `report.py` (Phase 6), `dpyd.py`/`slco1b1.py`/`cyp2c19.py` (Phases 3/4/8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
+Current state (Phase 3). The full target layout — `evidence.py` (Phase 5), `report.py` (Phase 6), `slco1b1.py`/`cyp2c19.py` (Phases 4/8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
 
 ```text
 pgx-interpretation-pipeline/
@@ -68,12 +68,15 @@ pgx-interpretation-pipeline/
 │   ├── schema.py
 │   ├── normalize.py
 │   └── genes/
-│       └── tpmt.py
+│       ├── tpmt.py
+│       └── dpyd.py
 ├── tests/
 │   ├── run_tests.py
 │   ├── test_models.py
 │   ├── test_tpmt.py
-│   └── fixtures/tpmt/          # 7 VCF fixtures
+│   ├── test_dpyd.py
+│   ├── fixtures/tpmt/          # 7 VCF fixtures
+│   └── fixtures/dpyd/          # 11 VCF fixtures
 ├── pyproject.toml
 ├── LICENSE                     # MIT — this project's own code
 ├── THIRD_PARTY_DATA.md

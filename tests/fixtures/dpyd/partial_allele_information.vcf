@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr1>
+##comment=No record at all at the D949V position (incomplete extraction/coverage) -- distinct from an explicit no-call.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr1	97450058	rs3918290	C	T	99	PASS	.	GT	0/0
+chr1	97515787	rs55886062	A	C	99	PASS	.	GT	0/0
+chr1	97573863	rs56038477	C	T	99	PASS	.	GT	0/0
+chr1	97579893	rs75017182	G	C	99	PASS	.	GT	0/0

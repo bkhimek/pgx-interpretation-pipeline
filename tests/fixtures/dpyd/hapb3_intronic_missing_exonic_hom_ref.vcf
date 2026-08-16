@@ -1,0 +1,10 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr1>
+##comment=Intronic HapB3 position has an explicit no-call; exonic tag alone confirms reference but is not sufficient on its own to positively rule out HapB3 (the causal variant is intronic).
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr1	97082391	rs67376798	T	A	99	PASS	.	GT	0/0
+chr1	97450058	rs3918290	C	T	99	PASS	.	GT	0/0
+chr1	97515787	rs55886062	A	C	99	PASS	.	GT	0/0
+chr1	97573863	rs56038477	C	T	99	PASS	.	GT	0/0
+chr1	97579893	rs75017182	G	C	.	LowQual	.	GT	./.

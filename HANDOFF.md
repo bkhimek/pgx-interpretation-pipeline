@@ -115,3 +115,33 @@ The real Phase 1 sync against the WSL repo hit a `ModuleNotFoundError: No module
 **Next session should:**
 1. Sync this batch, review diff/tree, commit ("Phase 2: TPMT — variant extraction, allele/diplotype calling, phenotype translation, phasing-ambiguity fixture"), push.
 2. Start Phase 3: DPYD — deliberately different model (activity-score summation instead of diplotype lookup), and the HapB3 intronic-variant handling from Plan §3a (`c.1129-5923C>G` preferred, exonic `c.1236G>A` fallback for exome-only input) — confirmed via PharmCAT's own changelog, worth citing directly rather than re-deriving.
+
+---
+
+## 2026-08-16 — Session 3 continued (Phase 3: DPYD)
+
+**Research first, then implementation**, same discipline as Phase 2. Confirmed real coordinates and evidence directly against primary sources before writing any DPYD-specific code:
+
+- **Allele/variant definitions** confirmed directly against dbSNP (GRCh38, DPYD is minus-strand so genomic REF>ALT is the reverse complement of the commonly-cited c.DNA change): `*2A` (c.1905+1G>A) = rs3918290, chr1:97,450,058 C>T, no function; `*13` (c.1679T>G) = rs55886062, chr1:97,515,787 A>C, no function; D949V (c.2846A>T) = rs67376798, chr1:97,082,391 T>A. **Correction caught during research, before any code was written:** initially assumed D949V might be no-function; CPIC's own table (confirmed via a subagent extraction with direct quotes from NCBI Bookshelf NBK395610) explicitly classifies it as **decreased** function (score 0.5), not no function (score 0) — the module docstring calls this out explicitly since it would be an easy, real mistake.
+- **HapB3**: exonic tag c.1236G>A = rs56038477, chr1:97,573,863 C>T; causal intronic variant c.1129-5923C>G = rs75017182, chr1:97,579,893 G>C, decreased function. Cross-checked the ~6,030 bp genomic gap between these two positions against the "-5923" in the intronic variant's own transcript-relative name as a self-consistency check that these are genuinely the documented pair.
+- **PharmCAT's HapB3 logic** confirmed by directly fetching `https://pharmcat.clinpgx.org/changelog/` (v2.10.0) rather than trusting the project plan's summary of it: exonic missing → use intronic; intronic and exonic disagree → use intronic, report exonic presence; both present and in sync → report HapB3. Reproduced as direct quotes in `dpyd.py`'s module docstring.
+- **A real, additional nuance found via independent web search, not in the original plan:** the two HapB3-defining variants are not in complete linkage disequilibrium after all (Turner et al., 2024–2025) — some individuals carry the exonic tag without the causal intronic variant. Relying on the exonic tag alone would be a real, documented false-positive. Built a dedicated fixture/test around exactly this scenario (`test_hapb3_exonic_tag_without_causal_intronic_variant_is_not_called`) rather than treating it as a hypothetical edge case.
+- **Phenotype evidence**: CPIC (2017) DPYD/fluoropyrimidines guideline Table 5 (via NCBI Bookshelf NBK395610): activity score 2 → Normal Metabolizer; 1 or 1.5 → Intermediate Metabolizer; 0 or 0.5 → Poor Metabolizer.
+
+**Built:**
+- `pgx_interpreter/genes/dpyd.py` — activity-score summation model across four independent loci (`*2A`, `*13`, D949V, HapB3), reusing the `_zygosity_at` hom_ref/het/hom_alt/missing/absent/unsupported vocabulary pattern from `tpmt.py`. HapB3 gets its own `_call_hapb3_zygosity` helper implementing PharmCAT's intronic-preferred/exonic-fallback/disagreement-reporting logic verbatim, including surfacing the disagreement note even in the case where the sample turns out to be a confirmed `*1/*1` (the intronic call overrides the misleading exonic tag, but the disagreement itself is still worth reporting for transparency — this took a second pass to get right, since the first draft only surfaced the note on non-reference outcomes).
+- Same scope-limitation pattern as TPMT's `*2` + `*3-family` combination: if more than one of the four independent loci shows a real variant simultaneously, reports `unsupported_allele` rather than attempting unphased multi-locus summation — documented explicitly in the module docstring as a limitation, not an oversight.
+- 11 real VCF fixtures under `tests/fixtures/dpyd/`: normal function (*1/*1, AS=2.0), `*2A` het (AS=1.0), `*13` hom_alt (AS=0.0), D949V het (AS=1.5, confirming the decreased-not-no-function correction above), HapB3 concordant het (AS=1.5, no disagreement note), HapB3 exonic-only fallback (intronic position entirely absent from the VCF, AS=1.5 via fallback), HapB3 exonic-tag-without-intronic false-positive avoidance (AS=2.0, `*1/*1`, disagreement still noted), HapB3 intronic-missing/exonic-hom-ref (insufficient data — exonic alone can't confirm reference), explicit missing genotype, position entirely absent from the VCF (distinct insufficient-data message from the explicit no-call case, same discipline as TPMT), a real-but-wrong substitution at the `*2A` position (unsupported allele), and two independent loci simultaneously non-reference (out-of-scope case).
+- `tests/test_dpyd.py` — 15 tests, all verified against hand-derivation before any fixture file was written (dry-run in the sandbox first, matching the Phase 2 pattern), including a direct RQ2 check that `activity_score` is populated here where TPMT's equivalent tests assert it stays `None`.
+- `docs/GENE_SCOPE.md` — added the `## DPYD (Phase 3)` section: allele/variant table, HapB3 logic, the real false-positive citation, and known limitations.
+
+**Verified before packaging:** both `pytest` and `tests/run_tests.py` pass — 34/34 (19 from Phases 1–2 unchanged + 15 new).
+
+**Not done yet (deliberately deferred):**
+- SLCO1B1 (Phase 4) — next, followed by Architecture Review 1 (Plan §5 milestone, required after TPMT + DPYD + SLCO1B1 are all done, producing `docs/ARCHITECTURE_REVIEW_V01.md`) before touching CYP2C19.
+- HapB3 disagreement notes are surfaced as text on `PGxResult.phenotype`, same interim limitation as TPMT's dosage-inferred-phase notes — a proper `interpretation_notes` field is Phase 6 (reporting), not Phase 3.
+- Root `CLAUDE.md` project-list entry — still not added.
+
+**Next session should:**
+1. Sync this batch, review diff/tree, commit ("Phase 3: DPYD — activity-score summation, HapB3 intronic-preferred/exonic-fallback logic"), push.
+2. Start Phase 4: SLCO1B1 — the third and last phenotype-assignment model this project's scope calls for (transport-function framing, per Plan RQ2), then Architecture Review 1.

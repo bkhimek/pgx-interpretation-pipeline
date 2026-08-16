@@ -28,3 +28,34 @@ What each supported gene actually covers, and what it deliberately doesn't. Upda
 - **Multi-allelic ALT fields use only the first listed allele.** None of Phase 2's fixtures are genuinely multi-allelic at a defining position, so this hasn't been exercised against a real case yet.
 
 See `pgx_interpreter/genes/tpmt.py`'s module docstring for the full genotype-dosage truth table and citations.
+
+## DPYD (Phase 3)
+
+**Model:** activity-score summation, deliberately different from TPMT's diplotype lookup (Plan RQ2: can one architecture support pharmacogenes with fundamentally different phenotype-assignment models?). Each of four independent loci contributes a function score (normal = 1.0, decreased = 0.5, no function = 0); the two haplotype-level scores sum to a diplotype-level activity score, and CPIC's own activity-score table — not the specific allele pairing — determines the phenotype. `activity_score` is genuinely populated for the first time in this project.
+
+**Alleles/variants recognized:** `*2A` (c.1905+1G>A, no function), `*13` (c.1679T>G, no function), D949V (c.2846A>T, decreased function), and HapB3 (a two-variant defining pair: exonic tag c.1236G>A plus the actual causal intronic variant c.1129-5923C>G, decreased function). These four loci are CPIC's standard clinically-actionable DPYD set. Rarer DPYD variants are out of scope and fall through to `unsupported_allele` rather than being silently mis-called.
+
+**Defining variants** (GRCh38, confirmed directly against dbSNP 2026-08-16; DPYD is minus-strand, so genomic REF>ALT is the reverse complement of the commonly-cited c.DNA change):
+
+| Variant | rsID | Position (chr1) | REF>ALT | CPIC function | Score |
+|---|---|---|---|---|---|
+| c.1905+1G>A (*2A) | rs3918290 | 97,450,058 | C>T | No function | 0 |
+| c.1679T>G (*13) | rs55886062 | 97,515,787 | A>C | No function | 0 |
+| c.2846A>T (D949V) | rs67376798 | 97,082,391 | T>A | Decreased function | 0.5 |
+| c.1236G>A (HapB3 exonic tag) | rs56038477 | 97,573,863 | C>T | (see HapB3 logic below) | — |
+| c.1129-5923C>G (HapB3 intronic, causal) | rs75017182 | 97,579,893 | G>C | Decreased function | 0.5 |
+
+**Phenotype evidence:** CPIC (2017) DPYD/fluoropyrimidines guideline, Table 5, as reproduced in NCBI Bookshelf NBK395610 — activity score 2 → Normal Metabolizer; 1 or 1.5 → Intermediate Metabolizer; 0 or 0.5 → Poor Metabolizer.
+
+**HapB3 intronic-preferred, exonic-fallback logic:** confirmed directly against PharmCAT's own changelog (v2.10.0, retrieved 2026-08-16), not re-derived. The intronic causal variant is authoritative whenever it's observable at all; the exonic tag is only relied on alone when the intronic site has no record whatsoever (e.g. WES-style coverage that doesn't reach deep intronic regions). If both are observed and disagree, the intronic call wins but the exonic disagreement is still recorded in the phenotype note for transparency, not silently discarded.
+
+**A real, documented false-positive this design specifically avoids:** the two HapB3-defining variants are not in complete linkage disequilibrium (Turner et al., 2024–2025) — some individuals carry the exonic tag without the causal intronic variant. Relying on the exonic tag alone in that case would wrongly call HapB3 (and its associated dose reduction). See `test_hapb3_exonic_tag_without_causal_intronic_variant_is_not_called` in `tests/test_dpyd.py`.
+
+### Known limitations (deliberate, not oversights)
+
+- **Simultaneous variants at two or more of the four independent loci are out of scope.** Activity-score summation does not sidestep phasing in general — if two different unlinked loci are both heterozygous at once, the true score genuinely depends on whether the defective alleles are in cis or trans, the same problem TPMT's `*3A` case has. This module reports `unsupported_allele` rather than silently summing across an unresolved phase.
+- **A confident "Normal Metabolizer" call requires all four loci confirmed hom-ref** (including both HapB3-defining positions), same "insufficient data blocks a positive Normal call" principle as TPMT's `*2` handling. A real defective-allele call at any single locus stands on its own even if another locus's coverage is incomplete.
+- **HapB3's exonic-tag/intronic-variant disagreement is recorded as a note on `PGxResult.phenotype`, not a dedicated field** — same interim limitation as TPMT's dosage-inferred-phase notes; a proper `interpretation_notes` field is Plan §6's report section 8, not built until Phase 6.
+- **VCF phase information and multi-allelic ALT fields** have the same limitations documented for TPMT (see above) — nothing here changes that.
+
+See `pgx_interpreter/genes/dpyd.py`'s module docstring for full citations, including the direct PharmCAT changelog quotes.

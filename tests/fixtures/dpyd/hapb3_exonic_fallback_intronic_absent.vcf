@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr1>
+##comment=Intronic HapB3 position (deep intronic, c.1129-5923) has no record at all -- simulates WES-style coverage that doesn't reach it. PharmCAT falls back to the exonic tag alone in this situation.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr1	97082391	rs67376798	T	A	99	PASS	.	GT	0/0
+chr1	97450058	rs3918290	C	T	99	PASS	.	GT	0/0
+chr1	97515787	rs55886062	A	C	99	PASS	.	GT	0/0
+chr1	97573863	rs56038477	C	T	99	PASS	.	GT	0/1
