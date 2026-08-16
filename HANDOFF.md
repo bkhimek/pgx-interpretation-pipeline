@@ -77,3 +77,41 @@ First real sync against the actual WSL repo (v3 zip) surfaced a genuine bug the 
 **Next session should:**
 1. Sync this batch (same `sync_batch.sh` flow as Phase 0 — zip lands in `PGx_Project/zip_files/`, script picks it up), review diff/tree, commit ("Phase 1: data model, JSON schema, unit tests"), push (should now go smoothly with `gh auth login` set up).
 2. Start Phase 2: TPMT — variant extraction, allele recognition, diplotype assignment, phenotype translation (Tier 1 evidence), plus the `*3A` vs `*3B`/`*3C` unphased-ambiguity fixture using real variant coordinates (Plan §3a, §5 Phase 2). This is where `phase_status=unphased_ambiguous` gets exercised by real caller logic for the first time, not just proven representable.
+
+---
+
+## 2026-08-16 — Session 2 addendum (sync_batch.sh self-overwrite bug)
+
+The real Phase 1 sync against the WSL repo hit a `ModuleNotFoundError: No module named 'pgx_interpreter'` at the test-running step, even though the diff/tree/structural-check output all confirmed the sync itself was correct. Root cause: `sync_batch.sh` is itself one of the files a batch delivers, so its own step 4 `rsync` routinely overwrites the running script on disk mid-execution. This run started as the old Phase 0 copy (still carrying the `PYTHONPATH=src` bug fixed earlier this session), overwrote itself with the fixed copy partway through via rsync, but bash kept executing the already-loaded *old* instructions for the remainder of that run — so the test step still used the stale `PYTHONPATH=src`, which doesn't resolve to this repo's (src-less) layout, hence the import failure. The actual synced files were never wrong; only that one run's self-test used stale logic milliseconds before being replaced.
+
+**Fix:** the script now re-execs itself from a frozen `/tmp` copy taken before anything (including its own rsync step) can modify the file it started as. Verified with a simulated self-overwrite test in the sandbox: log output stays on one consistent version throughout a run (including the test step, which now passes), while the file on disk still correctly ends up as the newly-synced version for the *next* invocation.
+
+**No separate patch delivery needed** — this fix is already in the working copy and will land automatically the next time any phase's zip is synced (Phase 2's, most likely), since `sync_batch.sh` is part of every batch. Once that lands, this specific bug class can't recur: every run from then on re-execs from a frozen copy of whatever version was on disk at the start, regardless of what the run's own sync does to the original file.
+
+---
+
+## 2026-08-16 — Session 3 (Phase 2: TPMT)
+
+**Research first, then implementation** (per the batch-workflow convention): before writing any TPMT-specific code, looked up real PharmVar/dbSNP coordinates and the actual CPIC phenotype table rather than relying on memory.
+
+- **Allele definitions** confirmed directly against dbSNP (not a secondary source): *2 = rs1800462, chr6:18,143,724 C>G (GRCh38); *3B = rs1800460, chr6:18,138,997 C>T; *3C = rs1142345, chr6:18,130,687 T>C; *3A = both *3B and *3C variants in cis. Both rs1800460 and rs1142345 are multi-allelic in dbSNP — only the specific REF>ALT pair above defines the star allele, which is exactly what the `conflicting_unsupported_pattern.vcf` fixture exercises (same position, real alternate substitution, not the *3B-defining one).
+- **Phenotype evidence** confirmed against CPIC's actual 2018 TPMT/NUDT15 guideline Table 4 (via NCBI Bookshelf NBK100661, not a paraphrase): 2 normal function alleles → Normal Metabolizer; 1 normal + 1 no function → Intermediate Metabolizer; 2 no function → Poor Metabolizer. *1 is normal function; *2/*3A/*3B/*3C are all no function.
+
+**Built:**
+- `pgx_interpreter/normalize.py` — minimal, dependency-free VCF parser (single-sample, GT-based zygosity, no compression/multi-sample support — deliberately scoped to what Phase 2 fixtures actually need, not general-purpose VCF handling).
+- `pgx_interpreter/genes/tpmt.py` — the full genotype-dosage truth table for the rs1800460 x rs1142345 pair (9 zygosity combinations plus missing/absent handling), independent *2 locus handling, and CPIC phenotype translation. Includes real dosage-inferred phasing (a homozygous call at one position can pin down phase at a heterozygous position at the other, without external phasing data) for combinations other than the true het+het ambiguity.
+- **Schema change:** `PGxResult` gained `alternative_diplotypes: tuple[Diplotype, ...] = ()` — additive, not breaking (Phase 1's 9 tests needed only one line changed, an empty-list addition to the hand-derived expected dict, and all passed unchanged otherwise). Needed because the *3A-vs-*3B/*3C ambiguity genuinely has two candidate diplotypes, and they map to **different** CPIC phenotypes (Intermediate vs Poor) — both get surfaced, not silently collapsed to one. This is exactly the kind of Phase-1-schema evolution Architecture Review 1 (Plan §5) is meant to review; recorded here as it happened, not retrofitted.
+- 7 real VCF fixtures under `tests/fixtures/tpmt/`, each parsed through the actual `parse_vcf()` path (not hand-constructed `ObservedVariant` objects bypassing extraction): normal function, heterozygous reduced function, two no-function alleles (via dosage-inferred phasing, *3A/*3C), missing genotype (explicit no-call), partial allele information (position entirely absent from the VCF — distinct data-quality problem from missing-genotype, verified to produce a distinguishable note), conflicting/unsupported pattern, and the flagship *3A unphased-ambiguity case.
+- `tests/test_tpmt.py` — 10 tests, all passing on the first real run against the hand-derivation (verified in the sandbox before writing any fixture files: constructed all 7 scenarios programmatically, checked output against hand-worked expectations, only then wrote the `.vcf` fixture files and the real test suite around them).
+- `docs/GENE_SCOPE.md` — new file, documents exactly what's recognized (5 alleles, ~95% of known no-function TPMT alleles) and what's explicitly out of scope (simultaneous *2 + *3-family variants; dosage-inference notes not yet surfaced in the report; multi-allelic ALT only takes the first listed allele).
+
+**Verified before packaging:** both `pytest` and `tests/run_tests.py` pass — 19/19 (9 from Phase 1 unchanged + 10 new).
+
+**Not done yet (deliberately deferred):**
+- DPYD (Phase 3) and SLCO1B1 (Phase 4) — next.
+- `interpretation_notes` / report-layer surfacing of the dosage-inference reasoning — Plan §6 (Phase 6, reporting), not Phase 2.
+- Root `CLAUDE.md` project-list entry — still not added; worth doing once TPMT+DPYD+SLCO1B1 are all in and Architecture Review 1 has happened, matching the plan's own "enough shape to describe in a few lines" threshold.
+
+**Next session should:**
+1. Sync this batch, review diff/tree, commit ("Phase 2: TPMT — variant extraction, allele/diplotype calling, phenotype translation, phasing-ambiguity fixture"), push.
+2. Start Phase 3: DPYD — deliberately different model (activity-score summation instead of diplotype lookup), and the HapB3 intronic-variant handling from Plan §3a (`c.1129-5923C>G` preferred, exonic `c.1236G>A` fallback for exome-only input) — confirmed via PharmCAT's own changelog, worth citing directly rather than re-deriving.

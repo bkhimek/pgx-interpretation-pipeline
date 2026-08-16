@@ -1,0 +1,7 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr6>
+##comment=rs1142345 (chr6:18130687, *3C-defining) is deliberately absent from this fixture entirely -- not even a hom-ref record -- representing incomplete region coverage during extraction, distinct from missing_genotype.vcf's explicit no-call.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr6	18138997	rs1800460	C	T	99	PASS	.	GT	0/1
+chr6	18143724	rs1800462	C	G	99	PASS	.	GT	0/0

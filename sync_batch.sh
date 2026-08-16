@@ -51,6 +51,25 @@
 
 set -euo pipefail
 
+# --- Self-modifying-script safety --------------------------------------------
+# This script is itself one of the files a batch delivers, so step 4's rsync
+# routinely overwrites this very file on disk mid-run. Observed for real on
+# the Phase 1 sync (2026-08-16): the running (old) copy's rsync step
+# overwrote itself with a fixed version partway through, but bash kept
+# executing the already-loaded old instructions for the rest of that run --
+# including the test step, which used the old copy's now-stale
+# `PYTHONPATH=src` and failed with a confusing `ModuleNotFoundError`, even
+# though the sync itself had completed correctly. Fix: re-exec from a frozen
+# temp copy taken before anything can change the file out from under us, so
+# one run always executes one consistent version start to finish.
+if [ -z "${SYNC_BATCH_REEXECED:-}" ]; then
+  STABLE_COPY="$(mktemp /tmp/sync_batch.XXXXXX.sh)"
+  cp "$0" "$STABLE_COPY"
+  chmod +x "$STABLE_COPY"
+  export SYNC_BATCH_REEXECED=1
+  exec "$STABLE_COPY" "$@"
+fi
+
 # --- Configuration — adjust for your machine ---------------------------------
 REPO_DIR="${REPO_DIR:-$HOME/projects/pgx-interpretation-pipeline}"
 INCOMING_DIR="${INCOMING_DIR:-/mnt/c/Users/krist/OneDrive/Documents/Projects/PGx_Project/zip_files}"

@@ -55,7 +55,8 @@ def _tpmt_example() -> PGxResult:
 def test_tpmt_example_matches_plan_section5_worked_example():
     # Hand-derived from PGx_Project_Plan.md Section 5, Phase 1, BEFORE
     # running any code -- this is the expected shape, not a
-    # reverse-engineered one.
+    # reverse-engineered one. `alternative_diplotypes` was added in Phase 2
+    # (see models.py) -- empty here since this example is unambiguous.
     expected = {
         "sample_id": "HG002",
         "gene": "TPMT",
@@ -73,6 +74,7 @@ def test_tpmt_example_matches_plan_section5_worked_example():
         "phenotype_evidence_version": "2026-01-01",
         "recommendation_evidence_source": None,
         "recommendation_evidence_version": None,
+        "alternative_diplotypes": [],
     }
     assert _tpmt_example().to_dict() == expected
 

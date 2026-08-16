@@ -184,6 +184,16 @@ class PGxResult:
     diplotype: Diplotype
     phenotype: PhenotypeAssignment
     recommendation: RecommendationResult = field(default_factory=RecommendationResult)
+    # Phase 2 addition (TPMT *3A vs *3B/*3C, Plan §3a): when phase truly
+    # cannot be resolved from the observed genotype, more than one diplotype
+    # is equally consistent with it. `diplotype` above still always holds
+    # exactly one (deterministically chosen -- see genes/tpmt.py) so every
+    # existing consumer of a single `diplotype` field keeps working;
+    # `alternative_diplotypes` holds the *other* equally-valid candidate(s),
+    # empty whenever there's nothing else to report. Additive, not a
+    # breaking change to Phase 1's shape -- exactly the kind of schema
+    # evolution Architecture Review 1 (Plan §5) expects to review.
+    alternative_diplotypes: tuple[Diplotype, ...] = ()
 
     def to_dict(self) -> dict:
         allele_1 = self.diplotype.allele_1
@@ -219,4 +229,5 @@ class PGxResult:
             "phenotype_evidence_version": self.phenotype.evidence_provenance.version,
             "recommendation_evidence_source": self.recommendation.evidence_provenance.source,
             "recommendation_evidence_version": self.recommendation.evidence_provenance.version,
+            "alternative_diplotypes": [str(d) for d in self.alternative_diplotypes],
         }

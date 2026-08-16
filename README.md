@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** Pre-implementation — Phase 0 (foundations, data model design, licensing audit). Not yet functional.
+**Status:** Phase 2 — TPMT implemented end to end (VCF → variant extraction → allele/diplotype calling → phenotype translation). DPYD and SLCO1B1 not yet started.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -36,6 +36,7 @@ Not a validated clinical diagnostic system, not an autonomous prescribing system
 - `docs/PGX_FOUNDATIONS.md` — core PGx vocabulary and the reasoning chain, written independent of any specific gene
 - `docs/DATA_SOURCES_AND_LICENSING.md` — full licensing audit for every external data/software source
 - `THIRD_PARTY_DATA.md` — quick-reference summary of the above
+- `docs/GENE_SCOPE.md` — per-gene allele coverage, defining variants, and explicit known limitations
 - `docs/ARCHITECTURE_REVIEW_V01.md` — planned after TPMT + DPYD + SLCO1B1 (Architecture Review 1 milestone)
 - `docs/VALIDATION.md` — planned for Phase 7
 

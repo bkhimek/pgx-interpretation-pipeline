@@ -36,6 +36,7 @@ PGX_RESULT_JSON_SCHEMA: dict = {
         "phenotype_evidence_version",
         "recommendation_evidence_source",
         "recommendation_evidence_version",
+        "alternative_diplotypes",
     ],
     "properties": {
         "sample_id": {"type": "string"},
@@ -71,6 +72,15 @@ PGX_RESULT_JSON_SCHEMA: dict = {
         "phenotype_evidence_version": {"type": ["string", "null"]},
         "recommendation_evidence_source": {"type": ["string", "null"]},
         "recommendation_evidence_version": {"type": ["string", "null"]},
+        "alternative_diplotypes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": (
+                "Phase 2 addition (Plan §3a): other diplotype(s) equally "
+                "consistent with the observed genotype when phase_status is "
+                "unphased_ambiguous. Empty otherwise."
+            ),
+        },
     },
     "additionalProperties": False,
 }

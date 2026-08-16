@@ -1,0 +1,10 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr6>
+# The flagship case from PGx_Project_Plan.md Section 3a: both *3B- and
+# *3C-defining variants observed as heterozygous, with no phasing
+# information. Equally consistent with *1/*3A (cis) and *3B/*3C (trans).
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr6	18130687	rs1142345	T	C	99	PASS	.	GT	0/1
+chr6	18138997	rs1800460	C	T	99	PASS	.	GT	0/1
+chr6	18143724	rs1800462	C	G	99	PASS	.	GT	0/0

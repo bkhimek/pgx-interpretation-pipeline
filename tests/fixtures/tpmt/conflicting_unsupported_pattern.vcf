@@ -1,0 +1,8 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr6>
+##comment=rs1800460 is multi-allelic in dbSNP (C>A / C>G / C>T all real); only C>T defines TPMT*3B. This record deliberately uses the C>G substitution at the exact same position -- a real variant, just not the one that defines *3B -- to prove position-only matching would be wrong.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr6	18130687	rs1142345	T	C	99	PASS	.	GT	0/0
+chr6	18138997	rs1800460	C	G	99	PASS	.	GT	0/1
+chr6	18143724	rs1800462	C	G	99	PASS	.	GT	0/0
