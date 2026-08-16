@@ -52,27 +52,33 @@ Evidence is fetched via a versioned adapter (fetch → validate → stamp with r
 
 ## Repository structure
 
+Current state (Phase 2). The full target layout — `evidence.py` (Phase 5), `report.py` (Phase 6), `dpyd.py`/`slco1b1.py`/`cyp2c19.py` (Phases 3/4/8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
+
 ```text
 pgx-interpretation-pipeline/
 ├── .github/workflows/ci.yml
 ├── data/README.md              # explains external data sources, none bundled raw
 ├── docs/
+│   ├── PGX_FOUNDATIONS.md
+│   ├── DATA_SOURCES_AND_LICENSING.md
+│   └── GENE_SCOPE.md
 ├── modules/local/
 ├── pgx_interpreter/
 │   ├── models.py
+│   ├── schema.py
 │   ├── normalize.py
-│   ├── evidence.py             # versioned adapter — Tier 1 + Tier 2
-│   ├── report.py
 │   └── genes/
-│       ├── tpmt.py
-│       ├── dpyd.py
-│       ├── slco1b1.py
-│       └── cyp2c19.py
+│       └── tpmt.py
 ├── tests/
-├── main.nf                     # Phase 9 (workflow orchestration)
+│   ├── run_tests.py
+│   ├── test_models.py
+│   ├── test_tpmt.py
+│   └── fixtures/tpmt/          # 7 VCF fixtures
 ├── pyproject.toml
 ├── LICENSE                     # MIT — this project's own code
-└── THIRD_PARTY_DATA.md
+├── THIRD_PARTY_DATA.md
+├── HANDOFF.md
+└── sync_batch.sh
 ```
 
 ## Development
