@@ -1,0 +1,6 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr12>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr12	21176804	rs2306283	A	G	99	PASS	.	GT	0/0
+chr12	21178615	rs4149056	T	C	.	LowQual	.	GT	./.

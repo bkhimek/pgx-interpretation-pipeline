@@ -1,0 +1,7 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr12>
+##comment=rs2306283 hom_alt (both copies), rs4149056 het (one copy). The copy carrying rs4149056 necessarily also carries rs2306283 (present on every copy) -> *15; the other copy carries rs2306283 alone -> *37. Resolvable from genotype dosage alone, no external phasing needed.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr12	21176804	rs2306283	A	G	99	PASS	.	GT	1/1
+chr12	21178615	rs4149056	T	C	99	PASS	.	GT	0/1

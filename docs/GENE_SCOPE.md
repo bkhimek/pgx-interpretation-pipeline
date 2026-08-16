@@ -59,3 +59,33 @@ See `pgx_interpreter/genes/tpmt.py`'s module docstring for the full genotype-dos
 - **VCF phase information and multi-allelic ALT fields** have the same limitations documented for TPMT (see above) — nothing here changes that.
 
 See `pgx_interpreter/genes/dpyd.py`'s module docstring for full citations, including the direct PharmCAT changelog quotes.
+
+## SLCO1B1 (Phase 4)
+
+**Model:** diplotype lookup, like TPMT — but with **transport-function** phenotype terms ("Normal/Decreased/Poor function") instead of "Metabolizer" categories, since SLCO1B1 encodes OATP1B1, a hepatic drug transporter, not a metabolizing enzyme. This is the third and last phenotype-assignment model this project's v1 scope calls for (Plan RQ2).
+
+**A correction to the project plan, caught during research:** the plan describes SLCO1B1 as "largely single-variant-driven." CPIC's actual guideline (Cooper-DeHoff et al. 2022, via NCBI Bookshelf NBK602238) does not support that — it assigns clinical function to 13 star alleles across a real diplotype system. The single-variant framing belongs to the DPWG guideline, which the same source explicitly contrasts with CPIC's approach. This module follows CPIC's diplotype model.
+
+**Alleles recognized:** `*1` (reference, normal function), `*37` (formerly named `*1B` — normal function), `*5` (no function), `*15` (no function). These four alleles, built from two variants, cover CPIC's single most clinically significant no-function driver (`*5`/rs4149056) and its combination with `*37`'s background variant (`*15`). CPIC additionally recognizes increased-function alleles (`*14`, `*20`) and several rarer alleles not implemented here — an unrecognized pattern falls through to `unsupported_allele`.
+
+**Defining variants** (GRCh38, confirmed directly against dbSNP 2026-08-16; SLCO1B1 is plus-strand, so genomic REF>ALT matches the c.DNA notation directly):
+
+| Allele | rsID | Position | REF>ALT | Function (CPIC 2022) |
+|---|---|---|---|---|
+| *37 | rs2306283 | chr12:21,176,804 | A>G | Normal function |
+| *5 | rs4149056 | chr12:21,178,615 | T>C | No function |
+| *15 | rs2306283 + rs4149056, same haplotype | — | — | No function |
+
+**Phenotype evidence:** CPIC (2022) SLCO1B1/statins guideline, Table 4 — 0 no-function alleles → Normal function; 1 no-function + 1 normal → Decreased function; 2 no-function → Poor function. CPIC's full table has five tiers (also Increased function, Possible decreased function); this module's four-allele scope can only ever produce the three above — "Possible decreased function" requires an unknown-function allele this module doesn't implement.
+
+**Phasing:** structurally identical to TPMT's `*3`-family truth table — rs2306283 and rs4149056 sit on one haplotype block, and genotype dosage resolves phase except heterozygous-at-both, which reports `phase_status=unphased_ambiguous` with both `*1/*15` (cis) and `*37/*5` (trans) as candidates. **Unlike TPMT's flagship case**, both candidates here happen to map to the *same* phenotype (Decreased function) — the ambiguity is still real and still reported (allele identity matters even when this particular phenotype call doesn't depend on it), but it's a useful counterexample showing unphased ambiguity doesn't always cross a clinical boundary.
+
+**A note for Architecture Review 1:** `_call_slco1b1_diplotype` is structurally identical to `tpmt.py`'s `_call_3_family_diplotype` — same two-linked-variant dosage-inference shape, different allele names and phenotype terms. Deliberately not refactored into a shared helper during Phase 4; worth deciding in the review, now that there's a genuine second data point (DPYD's activity-score model shows the same architecture does *not* generalize to every gene).
+
+### Known limitations (deliberate, not oversights)
+
+- **Only two of SLCO1B1's ~13 CPIC-classified functional alleles are implemented.** Increased-function alleles (`*14`, `*20`) and the rarer no-function/unknown-function alleles are out of scope for Phase 4.
+- **"Possible decreased function" and "Increased function" phenotype categories can never be produced by this module**, since they depend on alleles it doesn't implement — documented here rather than silently absent.
+- **VCF phase information and multi-allelic ALT fields** have the same limitations documented for TPMT and DPYD.
+
+See `pgx_interpreter/genes/slco1b1.py`'s module docstring for full citations and the complete genotype-dosage truth table.

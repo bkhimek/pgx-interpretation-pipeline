@@ -1,0 +1,7 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr12>
+##comment=*37 (formerly *1B) heterozygous alone -- still Normal function, since *37 is itself a normal-function allele.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr12	21176804	rs2306283	A	G	99	PASS	.	GT	0/1
+chr12	21178615	rs4149056	T	C	99	PASS	.	GT	0/0

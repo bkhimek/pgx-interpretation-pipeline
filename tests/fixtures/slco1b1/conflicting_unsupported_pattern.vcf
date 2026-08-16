@@ -1,0 +1,7 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr12>
+##comment=A real, different dbSNP substitution at the exact *5-defining position (T>A, not the T>C that actually defines rs4149056/c.521T>C) -- must not be silently treated as *5, *1, or anything else.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr12	21176804	rs2306283	A	G	99	PASS	.	GT	0/0
+chr12	21178615	rs4149056	T	A	99	PASS	.	GT	0/1
