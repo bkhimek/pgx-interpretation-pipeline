@@ -113,6 +113,12 @@ point DPYD's genuinely different activity-score shape already provides.
 """
 from __future__ import annotations
 
+from pgx_interpreter.genes._shared import (
+    UNDETERMINED,
+    find_variant as _find_variant,
+    undetermined_diplotype as _shared_undetermined_diplotype,
+    zygosity_at as _zygosity_at,
+)
 from pgx_interpreter.models import (
     AlleleCall,
     AlleleDefinitionProvenance,
@@ -145,7 +151,9 @@ _PHENOTYPE_PROVENANCE = PhenotypeEvidenceProvenance(
     version=PHENOTYPE_EVIDENCE_VERSION,
 )
 
-UNDETERMINED = "not_determined"  # sentinel star_allele for calls that cannot be made at all
+# UNDETERMINED, _find_variant, _zygosity_at: shared with TPMT and DPYD via
+# genes/_shared.py (extracted post-Architecture-Review-1 -- see
+# _shared.py's module docstring and docs/ARCHITECTURE_REVIEW_V01.md §6).
 
 
 def _allele_call(star_allele: str, variant: ObservedVariant | None) -> AlleleCall:
@@ -156,39 +164,8 @@ def _allele_call(star_allele: str, variant: ObservedVariant | None) -> AlleleCal
     )
 
 
-def _find_variant(
-    observed: tuple[ObservedVariant, ...], chrom: str, pos: int
-) -> ObservedVariant | None:
-    for v in observed:
-        if v.chrom == chrom and v.pos == pos:
-            return v
-    return None
-
-
-def _zygosity_at(
-    observed: tuple[ObservedVariant, ...], chrom: str, pos: int, ref: str, alt: str
-) -> tuple[str, ObservedVariant | None]:
-    """Same vocabulary as tpmt.py/dpyd.py: hom_ref / het / hom_alt / missing
-    / absent / unsupported -- see tpmt.py's `_zygosity_at` for the full
-    rationale."""
-    v = _find_variant(observed, chrom, pos)
-    if v is None:
-        return "absent", None
-    if v.zygosity == "missing":
-        return "missing", v
-    if v.ref == ref and v.alt == alt:
-        if v.zygosity in ("het", "hom_alt", "hom_ref"):
-            return v.zygosity, v
-        return "missing", v
-    return "unsupported", v
-
-
 def _undetermined_diplotype() -> Diplotype:
-    return Diplotype(
-        allele_1=_allele_call(UNDETERMINED, None),
-        allele_2=None,
-        phase_status=PhaseStatus.NOT_APPLICABLE,
-    )
+    return _shared_undetermined_diplotype(_DEFINITION_PROVENANCE)
 
 
 def call_slco1b1(

@@ -69,6 +69,12 @@ table this reasoning is implemented as.
 """
 from __future__ import annotations
 
+from pgx_interpreter.genes._shared import (
+    UNDETERMINED,
+    find_variant as _find_variant,
+    undetermined_diplotype as _shared_undetermined_diplotype,
+    zygosity_at as _zygosity_at,
+)
 from pgx_interpreter.models import (
     AlleleCall,
     AlleleDefinitionProvenance,
@@ -102,7 +108,12 @@ _PHENOTYPE_PROVENANCE = PhenotypeEvidenceProvenance(
     version=PHENOTYPE_EVIDENCE_VERSION,
 )
 
-UNDETERMINED = "not_determined"  # sentinel star_allele for calls that cannot be made at all
+# UNDETERMINED, _find_variant, _zygosity_at: shared with DPYD and SLCO1B1
+# via genes/_shared.py (extracted post-Architecture-Review-1, after all
+# three gene modules turned out to have independently reimplemented this
+# exact vocabulary with zero divergence -- see _shared.py's module
+# docstring and docs/ARCHITECTURE_REVIEW_V01.md §6). Imported and aliased
+# above so every call site below is unchanged.
 
 
 def _allele_call(star_allele: str, variant: ObservedVariant | None) -> AlleleCall:
@@ -113,54 +124,8 @@ def _allele_call(star_allele: str, variant: ObservedVariant | None) -> AlleleCal
     )
 
 
-def _find_variant(
-    observed: tuple[ObservedVariant, ...], chrom: str, pos: int
-) -> ObservedVariant | None:
-    """Return the observed record at this exact position, if any -- callers
-    must not confuse "no record" with "confirmed reference"; see
-    `_zygosity_at` below."""
-    for v in observed:
-        if v.chrom == chrom and v.pos == pos:
-            return v
-    return None
-
-
-def _zygosity_at(
-    observed: tuple[ObservedVariant, ...], chrom: str, pos: int, ref: str, alt: str
-) -> tuple[str, ObservedVariant | None]:
-    """Zygosity at a defining position, distinguishing three genuinely
-    different situations (Plan §8: never silently infer):
-
-      "hom_ref"  -- an explicit record confirms both copies match reference
-      "het"/"hom_alt" -- an explicit record with the exact defining REF>ALT
-      "unsupported" -- a record exists at this position but with a
-                       DIFFERENT ref/alt than the one that defines the star
-                       allele (a real variant, just not this one)
-      "missing"  -- an explicit no-call ("./.") record exists
-      "absent"   -- no record at all for this position (incomplete coverage,
-                    NOT the same as a confirmed hom_ref)
-    """
-    v = _find_variant(observed, chrom, pos)
-    if v is None:
-        return "absent", None
-    if v.zygosity == "missing":
-        return "missing", v
-    if v.ref == ref and v.alt == alt:
-        if v.zygosity in ("het", "hom_alt", "hom_ref"):
-            return v.zygosity, v
-        return "missing", v
-    # A record exists at this exact position but doesn't match the
-    # defining substitution -- e.g. a different real dbSNP allele at the
-    # same multi-allelic site. Must not be treated as either *3B/*3C or *1.
-    return "unsupported", v
-
-
 def _undetermined_diplotype() -> Diplotype:
-    return Diplotype(
-        allele_1=_allele_call(UNDETERMINED, None),
-        allele_2=None,
-        phase_status=PhaseStatus.NOT_APPLICABLE,
-    )
+    return _shared_undetermined_diplotype(_DEFINITION_PROVENANCE)
 
 
 def call_tpmt(

@@ -208,3 +208,40 @@ Pure documentation/reflection milestone, per Plan §5's explicit checkpoint disc
 **Next session should:**
 1. Sync this batch, review diff, commit ("Architecture Review 1: universal vs. gene-specific concepts, unused schema fields, shared-helper refactor recommendation"), push.
 2. Either (a) do the recommended `_shared.py` extraction as a small, low-risk cleanup before CYP2C19, or (b) proceed straight to CYP2C19 and let its real requirements inform whether the extraction (and possibly a second one, for the dosage truth table) is worth doing at that point instead. Worth asking the user which they'd prefer, since it's a real scope/sequencing choice rather than a technical question with one right answer.
+
+---
+
+## 2026-08-16 — Session 5 (post-Architecture-Review-1 cleanup)
+
+User chose option (a): do the recommended cleanup before CYP2C19. Two things done this session, both low-risk and non-feature-adding by design.
+
+**1. Extracted the shared zygosity helpers, exactly as the review recommended and no further.**
+
+Confirmed via `grep -rn "_zygosity_at\|_find_variant\|_undetermined_diplotype\|UNDETERMINED" tests/` that no test imports these helpers directly (only the public `call_tpmt`/`call_dpyd`/`call_slco1b1` entry points), so the refactor was safe to do as a pure internal change with no test-file edits needed.
+
+Created `pgx_interpreter/genes/_shared.py` holding `find_variant`, `zygosity_at`, `UNDETERMINED`, and `undetermined_diplotype(definition_provenance)` — the last one takes the gene's own `AlleleDefinitionProvenance` as a parameter rather than hard-coding one, since that provenance is genuinely gene-specific; this is the one place the shared/gene-specific boundary runs through the inside of a function rather than between functions, called out explicitly in the module's docstring so it doesn't read as an oversight.
+
+Updated `tpmt.py`, `dpyd.py`, and `slco1b1.py` to import and alias these (`find_variant as _find_variant`, `zygosity_at as _zygosity_at`, `undetermined_diplotype as _shared_undetermined_diplotype`) so every existing internal call site needed zero changes — only the function *definitions* were deleted, not their usages. `_allele_call()` stays local to each gene module, deliberately: DPYD's takes a tuple of matched variants (HapB3 needs two), TPMT/SLCO1B1 take a single optional variant — forcing these to a common signature would have meant picking one shape and padding the other, exactly the kind of premature unification the architecture review's whole point was to avoid.
+
+**Explicitly did NOT touch** `_call_3_family_diplotype` (tpmt.py) / `_call_slco1b1_diplotype` (slco1b1.py) — the two-linked-variant dosage truth table the review flagged as sharing a structural shape but recommended waiting on. That recommendation still stands; touched nothing there.
+
+**Verified:** re-ran the full suite before and after the refactor — 50/50 both times, byte-for-byte identical test outcomes, confirming this was purely structural.
+
+**2. Fixed a real, twice-hit bug: `sync_batch.sh` losing its executable bit.**
+
+Root cause, confirmed by direct inspection rather than guessed at, and initially *mis*-diagnosed before being caught: `git ls-files -s sync_batch.sh` in the working copy showed mode `100644` (non-executable) despite the live file on disk showing `-rwx------`. First fix attempt was `chmod +x sync_batch.sh` immediately before `git add -A` in the packaging build copy — this looked right, but re-checking `git ls-files -s` afterward showed the mode was *still* `100644`, i.e. the chmod hadn't actually been picked up at all. Root cause turned out to be one level deeper: this repo has `core.fileMode=false` set (`git config --get core.fileMode` → `false`), which makes git deliberately ignore on-disk permission changes when staging — a setting that's typically auto-set on filesystems that don't reliably preserve Unix permissions (exactly this project's situation, developed across a Windows/OneDrive-mounted path via WSL). Every previous packaging session's `chmod +x` was silently a no-op from git's point of view, which is why the file shipped non-executable in every zip since whichever commit first tracked it that way, independent of the live file's actual permissions each time.
+
+**Actual fix**: `git update-index --chmod=+x sync_batch.sh`, which stages an explicit mode change regardless of `core.fileMode`, bypassing the on-disk-diff detection that setting disables. Confirmed working by re-checking `git ls-files -s` immediately after — mode now correctly shows `100755`. This is now the standing packaging-step command for this specific file going forward (not plain `chmod`, which this repo's config silently swallows).
+
+**Belt-and-suspenders, inside the script itself**: also added a new step 4.5 to `sync_batch.sh` — `chmod +x "$REPO_DIR/sync_batch.sh"` immediately after the rsync step, so the copy landing on the user's machine self-heals regardless of whether a given zip got the permission right. (This one works fine as a plain `chmod` since it runs directly on the user's filesystem, outside of git entirely — `core.fileMode` only affects what git stages, not what `chmod` itself does to a file.) This means even a stale zip built before the packaging-source fix, or any future regression of the same kind, can't reintroduce the "Permission denied" surprise on the *next* sync. Documented in the script's own header comment alongside the two bugs it already designed out (silent no-op sync, misleading tree-print exclusion).
+
+**Verified before packaging:** `bash -n sync_batch.sh` for syntax validity, plus the full test suite (still 50/50, this fix touches no Python code).
+
+**Not done yet (deliberately deferred):**
+- The two-linked-variant dosage truth table extraction (TPMT ↔ SLCO1B1) — explicitly left for after CYP2C19, per the architecture review's own reasoning.
+- CYP2C19 (Phase 8) — next, now genuinely unblocked with the recommended cleanup done.
+- Root `CLAUDE.md` project-list entry — still not added.
+
+**Next session should:**
+1. Sync this batch — first real end-to-end test that the executable-bit fix actually works: confirm `./sync_batch.sh` runs without needing a manual `chmod +x` first. Review diff, commit ("Post-Architecture-Review-1 cleanup: extract shared zygosity helpers, fix sync_batch.sh executable-bit packaging bug"), push.
+2. Start Phase 8: CYP2C19 — the plan's designated fourth gene, and the real test of whether the shared-helper boundary drawn in this session (and the deliberately-not-yet-shared dosage truth table) still looks right with a more complex gene in the picture.

@@ -4,8 +4,8 @@
 #
 # Mirrors the pattern used by the CAPN3-DMD-variant-classifier project
 # (Track B in ~/CLAUDE.md), tightened after review of this project's Phase 0
-# batch (see DEVELOPMENT_WORKFLOW.md). Two bugs from the classifier project
-# are deliberately designed out here, not just documented:
+# batch (see DEVELOPMENT_WORKFLOW.md). Three bugs are deliberately designed
+# out here, not just documented:
 #
 #   - A sync that silently copied nothing still looked like "nothing to
 #     commit" -> now a hard failure (step 5 below).
@@ -14,6 +14,14 @@
 #     actually unreachable from the code that expected it -> now the full
 #     resulting file tree is printed, plus a structural check against the
 #     project plan's expected top-level layout (step 6 below).
+#   - This script itself repeatedly lost its own executable bit across
+#     Phase 4 and the Architecture Review 1 delivery (root cause: an early
+#     commit tracked it as mode 644, so every `git archive`-built zip since
+#     then shipped it non-executable, regardless of the live file's actual
+#     permissions -- fixed at the packaging source going forward, but this
+#     script now also self-heals the copy it lands on your machine, so a
+#     stale zip built before that fix can't reintroduce the same problem
+#     -> step 4.5 below).
 #
 # What it does:
 #   1. Looks for candidate zips in $INCOMING_DIR (default: this project's own
@@ -156,6 +164,19 @@ rsync -a --delete \
   "$SRC_DIR"/ "$REPO_DIR"/
 
 cd "$REPO_DIR"
+
+# --- Step 4.5: self-heal this script's own executable bit ----------------------
+# Belt-and-suspenders fix for a real, repeated bug: this script is one of the
+# files every batch delivers, and an early commit tracked it as mode 644
+# (non-executable) in git -- `git archive` always reads the file mode from
+# the git tree, not the live filesystem, so every zip built from that point
+# on shipped it non-executable no matter what chmod was done to the working
+# copy used to edit it. Fixed at the packaging source (the zip's own git
+# history) going forward, but a zip built before that fix, or any future
+# regression of the same kind, would silently reintroduce the "Permission
+# denied" surprise on the *next* sync. Guaranteeing this here costs nothing
+# and closes the loop regardless of whether the zip got it right.
+chmod +x "$REPO_DIR/sync_batch.sh" 2>/dev/null || true
 
 # --- Step 5: hard-fail on no diff ----------------------------------------------
 AFTER_STATUS="$(git status --porcelain)"
