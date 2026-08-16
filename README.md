@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** Architecture Review 1 complete — TPMT, DPYD, and SLCO1B1 all implemented end to end (VCF → variant extraction → allele/diplotype calling → phenotype translation), the three-gene v0.1 engine the plan targets. Each uses a different phenotype-assignment model by design (diplotype lookup / activity-score summation / transport-function framing). See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific, and what's next before CYP2C19.
+**Status:** Phase 5 complete — TPMT, DPYD, and SLCO1B1 now go all the way from VCF to a guideline-linked drug recommendation (variant → allele/diplotype → phenotype → Tier 2 evidence-backed dosing guidance), via `pgx_interpreter/evidence.py`'s fetch → validate → stamp → cache adapter against ClinPGx's live guideline API, paired with a hand-verified phenotype/activity-score → recommendation mapping (same "cite the real source" discipline Tier 1 already used). See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's Tier 2 scope and citations.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -48,11 +48,11 @@ Three independently-versioned external knowledge inputs, kept structurally separ
 - **Phenotype evidence** — ClinPGx/CPIC (Tier 1)
 - **Drug-recommendation evidence** — ClinPGx/CPIC (Tier 2)
 
-Evidence is fetched via a versioned adapter (fetch → validate → stamp with retrieval date/version → cache locally, outside the repo), not bundled as a static table. Nothing third-party is ever committed to this repository — see `THIRD_PARTY_DATA.md`.
+Evidence is fetched via a versioned adapter (fetch → validate → stamp with retrieval date/version → cache locally, outside the repo), not bundled as a static table. Nothing third-party is ever committed to this repository — see `THIRD_PARTY_DATA.md`. `pgx_interpreter/evidence.py` (Phase 5) implements this for Tier 2: it fetches and caches the real ClinPGx guideline JSON for citation provenance, and pairs it with a hand-verified phenotype/activity-score → recommendation-category mapping, since ClinPGx does not expose phenotype-stratified dosing tables as structured data (they live only as HTML inside each guideline's `textMarkdown`). `recommend()` is a separate, optional Layer 4 step applied on top of an already-computed `PGxResult` — Layers 1-3 (`call_tpmt`/`call_dpyd`/`call_slco1b1`) never touch the network.
 
 ## Repository structure
 
-Current state (Phase 4). The full target layout — `evidence.py` (Phase 5), `report.py` (Phase 6), `cyp2c19.py` (Phase 8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
+Current state (Phase 5). The full target layout — `report.py` (Phase 6), `cyp2c19.py` (Phase 8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
 
 ```text
 pgx-interpretation-pipeline/
@@ -67,6 +67,7 @@ pgx-interpretation-pipeline/
 │   ├── models.py
 │   ├── schema.py
 │   ├── normalize.py
+│   ├── evidence.py             # Phase 5: Tier 2 fetch/validate/stamp/cache adapter + recommend()
 │   └── genes/
 │       ├── tpmt.py
 │       ├── dpyd.py
@@ -77,9 +78,11 @@ pgx-interpretation-pipeline/
 │   ├── test_tpmt.py
 │   ├── test_dpyd.py
 │   ├── test_slco1b1.py
+│   ├── test_evidence.py
 │   ├── fixtures/tpmt/          # 7 VCF fixtures
 │   ├── fixtures/dpyd/          # 11 VCF fixtures
-│   └── fixtures/slco1b1/       # 12 VCF fixtures
+│   ├── fixtures/slco1b1/       # 12 VCF fixtures
+│   └── fixtures/evidence/      # 3 real ClinPGx guideline-annotation payloads, network-free tests
 ├── pyproject.toml
 ├── LICENSE                     # MIT — this project's own code
 ├── THIRD_PARTY_DATA.md

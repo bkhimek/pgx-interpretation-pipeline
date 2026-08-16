@@ -1,0 +1,155 @@
+{
+  "guideline_id": "PA166104933",
+  "retrieved_at": "2026-08-16T00:00:00+00:00",
+  "payload": {
+    "data": {
+      "objCls": "Guideline Annotation",
+      "id": "PA166104933",
+      "name": "Annotation of CPIC Guideline for azathioprine and NUDT15, TPMT",
+      "alternateDrugAvailable": true,
+      "cancerGenome": false,
+      "crossReferences": [],
+      "dosingInformation": true,
+      "hasTestingInfo": false,
+      "history": [
+        {
+          "id": 1183699765,
+          "date": "2011-01-26T00:00:00-08:00",
+          "type": "Create",
+          "version": 0
+        },
+        {
+          "id": 1183699766,
+          "date": "2013-01-17T00:00:00-08:00",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1447986815,
+          "date": "2016-05-10T21:43:52.524-07:00",
+          "description": "Update guideline with information regarding the NUDT15 gene.",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1449717122,
+          "date": "2018-08-23T17:58:20.515-07:00",
+          "description": "Updated video link",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1451463500,
+          "date": "2021-06-22T09:52:52.952-07:00",
+          "description": "Added link to video",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1452137980,
+          "date": "2023-06-22T22:57:14.613-07:00",
+          "description": "Updated supplemental table links",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1452417960,
+          "date": "2024-03-21T14:00:47.468-07:00",
+          "description": "Updated recommendations for the following phenotypes: TPMT Intermediate Metabolizer/NUDT15 Intermediate Metabolizer, TPMT Intermediate Metabolizer/Possible NUDT15 Intermediate Metabolizer, Possible TPMT Intermediate Metabolizer/NUDT15 Intermediate Metabolizer, Possible TPMT Intermediate Metabolizer/Possible NUDT15 Intermediate Metabolizer",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1454649663,
+          "date": "2026-02-04T00:23:18.177-08:00",
+          "description": "Guideline update",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1454754701,
+          "date": "2026-05-11T00:00:00-07:00",
+          "description": "Correction to 2025 guideline Table 1",
+          "type": "Correction",
+          "version": 0
+        },
+        {
+          "id": 1456353302,
+          "date": "2026-08-12T17:45:47.779-07:00",
+          "description": "clarified May 2026 update text to refer to TPMT",
+          "type": "Update",
+          "version": 0
+        }
+      ],
+      "literature": [
+        {
+          "id": 15330382,
+          "title": "Clinical Pharmacogenetics Implementation Consortium (CPIC) Guideline for Thiopurine Dosing Based on TPMT and NUDT15 Genotypes: 2025 Update.",
+          "_sameAs": "https://www.ncbi.nlm.nih.gov/pubmed/41618934",
+          "crossReferences": [
+            {
+              "id": 1454649660,
+              "resource": "PubMed",
+              "resourceId": "41618934",
+              "_url": "https://www.ncbi.nlm.nih.gov/pubmed/41618934"
+            },
+            {
+              "id": 1454649661,
+              "resource": "DOI",
+              "resourceId": "10.1002/cpt.70209",
+              "_url": "http://dx.doi.org/10.1002%2Fcpt.70209"
+            }
+          ],
+          "objCls": "Literature",
+          "pubDate": "2026-01-01T00:00:00-08:00",
+          "terms": [
+            {
+              "id": 1454108620,
+              "resource": "ClinPGx Tags",
+              "term": "CPIC",
+              "termId": "pgkbTags:1454108620"
+            },
+            {
+              "id": 1451577480,
+              "resource": "PGx Paper Types",
+              "term": "Implementation",
+              "termId": "pgxPaperTypes:1451577480"
+            }
+          ],
+          "type": "Literature"
+        }
+      ],
+      "otherPrescribingGuidance": true,
+      "pediatric": true,
+      "recommendation": true,
+      "relatedAlleles": [],
+      "relatedChemicals": [
+        {
+          "objCls": "Chemical",
+          "id": "PA448515",
+          "name": "azathioprine"
+        }
+      ],
+      "relatedGenes": [
+        {
+          "objCls": "Gene",
+          "id": "PA134963132",
+          "symbol": "NUDT15",
+          "name": "nudix hydrolase 15"
+        },
+        {
+          "objCls": "Gene",
+          "id": "PA356",
+          "symbol": "TPMT",
+          "name": "thiopurine S-methyltransferase"
+        }
+      ],
+      "source": "CPIC",
+      "summaryMarkdown": {
+        "id": 1449753103,
+        "html": "<p>The CPIC dosing guideline recommends that a lower than standard starting dose of azathioprine should be considered for TPMT or NUDT15 intermediate metabolizers. Compound TMPT/NUDT15 intermediate metabolizers require further dose reduction compared to single gene intermediate metabolizers. For TPMT and/or NUDT15 poor metabolizers, an alternative immunosuppressant therapy should be considered.</p>\n"
+      }
+    },
+    "status": "success"
+  }
+}

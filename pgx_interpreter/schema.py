@@ -36,6 +36,9 @@ PGX_RESULT_JSON_SCHEMA: dict = {
         "phenotype_evidence_version",
         "recommendation_evidence_source",
         "recommendation_evidence_version",
+        "recommended_drug",
+        "recommendation_category",
+        "recommendation_guideline_source",
         "alternative_diplotypes",
     ],
     "properties": {
@@ -72,6 +75,9 @@ PGX_RESULT_JSON_SCHEMA: dict = {
         "phenotype_evidence_version": {"type": ["string", "null"]},
         "recommendation_evidence_source": {"type": ["string", "null"]},
         "recommendation_evidence_version": {"type": ["string", "null"]},
+        "recommended_drug": {"type": ["string", "null"]},
+        "recommendation_category": {"type": ["string", "null"]},
+        "recommendation_guideline_source": {"type": ["string", "null"]},
         "alternative_diplotypes": {
             "type": "array",
             "items": {"type": "string"},

@@ -229,5 +229,13 @@ class PGxResult:
             "phenotype_evidence_version": self.phenotype.evidence_provenance.version,
             "recommendation_evidence_source": self.recommendation.evidence_provenance.source,
             "recommendation_evidence_version": self.recommendation.evidence_provenance.version,
+            # Phase 5 addition (Plan §4/§5, evidence.py's Tier 2 adapter):
+            # the actual drug guidance, once recommendation_evidence_* above
+            # confirms where it came from. Additive, same pattern as
+            # alternative_diplotypes in Phase 2 -- stays None/unset on any
+            # PGxResult that hasn't been through evidence.recommend().
+            "recommended_drug": self.recommendation.drug,
+            "recommendation_category": self.recommendation.recommendation_category,
+            "recommendation_guideline_source": self.recommendation.guideline_source,
             "alternative_diplotypes": [str(d) for d in self.alternative_diplotypes],
         }

@@ -1,0 +1,109 @@
+{
+  "guideline_id": "PA166122686",
+  "retrieved_at": "2026-08-16T00:00:00+00:00",
+  "payload": {
+    "data": {
+      "objCls": "Guideline Annotation",
+      "id": "PA166122686",
+      "name": "Annotation of CPIC Guideline for fluorouracil and DPYD",
+      "alternateDrugAvailable": true,
+      "cancerGenome": false,
+      "crossReferences": [],
+      "descriptiveVideoId": "2wB2l4W9x8s",
+      "dosingInformation": true,
+      "hasTestingInfo": false,
+      "history": [
+        {
+          "id": 1184511807,
+          "date": "2014-07-30T00:00:00-07:00",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1451359980,
+          "date": "2021-03-19T08:09:11.104-07:00",
+          "description": "Correction of IM dosing recommendations",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1452353466,
+          "date": "2024-01-17T09:44:42.353-08:00",
+          "description": "added January 2024 update",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1456344904,
+          "date": "2026-07-09T13:31:19.466-07:00",
+          "description": "CPIC note regarding c.1129-5923C>G (rs75017182G and causal allele associated with \u201cHapB3\u201d) allele function",
+          "type": "Note",
+          "version": 0
+        }
+      ],
+      "literature": [
+        {
+          "id": 15099812,
+          "title": "Clinical Pharmacogenetics Implementation Consortium (CPIC) Guideline for Dihydropyrimidine Dehydrogenase Genotype and Fluoropyrimidine Dosing: 2017 Update.",
+          "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5760397",
+          "crossReferences": [
+            {
+              "id": 1449285368,
+              "resource": "PubMed Central",
+              "resourceId": "PMC5760397",
+              "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5760397"
+            },
+            {
+              "id": 1449285367,
+              "resource": "PubMed",
+              "resourceId": "29152729",
+              "_url": "https://www.ncbi.nlm.nih.gov/pubmed/29152729"
+            },
+            {
+              "id": 1449285369,
+              "resource": "DOI",
+              "resourceId": "10.1002/cpt.911",
+              "_url": "http://dx.doi.org/10.1002%2Fcpt.911"
+            }
+          ],
+          "objCls": "Literature",
+          "pubDate": "2018-02-01T00:00:00-08:00",
+          "terms": [
+            {
+              "id": 1454108620,
+              "resource": "ClinPGx Tags",
+              "term": "CPIC",
+              "termId": "pgkbTags:1454108620"
+            }
+          ],
+          "type": "Literature"
+        }
+      ],
+      "otherPrescribingGuidance": false,
+      "pediatric": true,
+      "recommendation": true,
+      "relatedAlleles": [],
+      "relatedChemicals": [
+        {
+          "objCls": "Chemical",
+          "id": "PA128406956",
+          "name": "fluorouracil"
+        }
+      ],
+      "relatedGenes": [
+        {
+          "objCls": "Gene",
+          "id": "PA145",
+          "symbol": "DPYD",
+          "name": "dihydropyrimidine dehydrogenase"
+        }
+      ],
+      "source": "CPIC",
+      "summaryMarkdown": {
+        "id": 1450180196,
+        "html": "<p>The CPIC Dosing Guideline for 5-fluorouracil and capecitabine recommends an alternative drug for patients who are DPYD poor metabolizers with an activity score of 0. In those who are poor metabolizers with an activity score of 0.5, an alternative drug is also recommended, but if this is not considered a suitable therapeutic option, 5-fluorouracil or capecitabine should be administered at a strongly reduced dose with early therapeutic drug monitoring. Patients who are intermediate metabolizers with an activity score of 1 or 1.5 should receive a dose reduction of 50%. Patients with the c.[2846A&gt;T];[2846A&gt;T] genotype may require a &gt;50% dose reduction. This guideline has been updated online since publication in 2017, and is in the process of being updated again based on a complete evidence review.</p>\n"
+      }
+    },
+    "status": "success"
+  }
+}

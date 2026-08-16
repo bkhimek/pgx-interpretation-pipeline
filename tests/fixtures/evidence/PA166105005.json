@@ -1,0 +1,109 @@
+{
+  "guideline_id": "PA166105005",
+  "retrieved_at": "2026-08-16T00:00:00+00:00",
+  "payload": {
+    "data": {
+      "objCls": "Guideline Annotation",
+      "id": "PA166105005",
+      "name": "Annotation of CPIC Guideline for simvastatin and SLCO1B1",
+      "alternateDrugAvailable": true,
+      "cancerGenome": false,
+      "crossReferences": [],
+      "descriptiveVideoId": "SN3SiKDcoS8",
+      "dosingInformation": true,
+      "hasTestingInfo": false,
+      "history": [
+        {
+          "id": 1183699778,
+          "date": "2012-05-23T00:00:00-07:00",
+          "type": "Create",
+          "version": 0
+        },
+        {
+          "id": 1451687080,
+          "date": "2022-02-17T10:49:33.830-08:00",
+          "description": "update based on CPIC statin 2022 update",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1454274780,
+          "date": "2025-09-25T15:40:32.525-07:00",
+          "description": "2025 updates on selected SLCO1B1 alleles",
+          "type": "Update",
+          "version": 0
+        }
+      ],
+      "literature": [
+        {
+          "id": 15128762,
+          "title": "The Clinical Pharmacogenetics Implementation Consortium Guideline for SLCO1B1, ABCG2, and CYP2C9 genotypes and Statin-Associated Musculoskeletal Symptoms.",
+          "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9035072",
+          "crossReferences": [
+            {
+              "id": 1451837607,
+              "resource": "PubMed Central",
+              "resourceId": "PMC9035072",
+              "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9035072"
+            },
+            {
+              "id": 1451681580,
+              "resource": "PubMed",
+              "resourceId": "35152405",
+              "_url": "https://www.ncbi.nlm.nih.gov/pubmed/35152405"
+            },
+            {
+              "id": 1451681581,
+              "resource": "DOI",
+              "resourceId": "10.1002/cpt.2557",
+              "_url": "http://dx.doi.org/10.1002%2Fcpt.2557"
+            }
+          ],
+          "objCls": "Literature",
+          "pubDate": "2022-05-01T00:00:00-07:00",
+          "terms": [
+            {
+              "id": 1454108620,
+              "resource": "ClinPGx Tags",
+              "term": "CPIC",
+              "termId": "pgkbTags:1454108620"
+            }
+          ],
+          "type": "Literature"
+        }
+      ],
+      "otherPrescribingGuidance": false,
+      "pediatric": true,
+      "recommendation": true,
+      "relatedAlleles": [
+        {
+          "objCls": "Variant",
+          "id": "PA166154579",
+          "symbol": "rs4149056",
+          "name": "rs4149056"
+        }
+      ],
+      "relatedChemicals": [
+        {
+          "objCls": "Chemical",
+          "id": "PA451363",
+          "name": "simvastatin"
+        }
+      ],
+      "relatedGenes": [
+        {
+          "objCls": "Gene",
+          "id": "PA134865839",
+          "symbol": "SLCO1B1",
+          "name": "solute carrier organic anion transporter family member 1B1"
+        }
+      ],
+      "source": "CPIC",
+      "summaryMarkdown": {
+        "id": 1447981966,
+        "html": "<p>The CPIC dosing guideline recommends prescribing an alternative statin depending on the desired potency for patients with SLCO1B1 decreased function, possible decreased function or poor function phenotype. If simvastatin therapy is warranted in patients with SLCO1B1 decreased or possible decreased phenotype, limit dose to &lt;20mg/day.</p>\n"
+      }
+    },
+    "status": "success"
+  }
+}

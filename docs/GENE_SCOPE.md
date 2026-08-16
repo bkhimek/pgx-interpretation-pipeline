@@ -29,7 +29,9 @@ What each supported gene actually covers, and what it deliberately doesn't. Upda
 - **Dosage-inferred phase notes aren't surfaced in the report yet.** When phase is resolved via genotype dosage (e.g. `*3A`/`*3C`, Plan §3a-adjacent reasoning), the code computes an explanatory note but it isn't currently exposed on `PGxResult` — there's no `interpretation_notes` field yet (that's Plan §6's report section 8, not built until Phase 6). The reasoning is documented in `pgx_interpreter/genes/tpmt.py` in the meantime.
 - **Multi-allelic ALT fields use only the first listed allele.** None of Phase 2's fixtures are genuinely multi-allelic at a defining position, so this hasn't been exercised against a real case yet.
 
-See `pgx_interpreter/genes/tpmt.py`'s module docstring for the full genotype-dosage truth table and citations.
+**Tier 2 (drug recommendation, Phase 5):** azathioprine, via `pgx_interpreter/evidence.py`, guideline `PA166104933`. Uses CPIC's **single-gene TPMT table** (2018 Update, as reproduced in NCBI Bookshelf NBK100661 Table 2), not the compound TPMT+NUDT15 diplotype table CPIC has used since February 2024 — NUDT15 is out of scope for this project (documented above), so the single-gene table is the correct fit, and it's the one independently re-verified as still current against TPMT's 2025/2026 phenotype-assignment update (see the re-verification note above). Normal Metabolizer → normal starting dose; Intermediate → 30-80% of normal dose; Poor → alternative agent or a drastically reduced (10-fold) dose. All three classified "Strong" by CPIC. Only attached when TPMT's phenotype call is `Confidence.SUPPORTED`; ambiguous/insufficient-data/unsupported-allele results are never given a drug recommendation.
+
+See `pgx_interpreter/genes/tpmt.py`'s module docstring for the full genotype-dosage truth table and citations, and `pgx_interpreter/evidence.py`'s module docstring for the full Tier 2 citation and design rationale.
 
 ## DPYD (Phase 3)
 
@@ -60,7 +62,9 @@ See `pgx_interpreter/genes/tpmt.py`'s module docstring for the full genotype-dos
 - **HapB3's exonic-tag/intronic-variant disagreement is recorded as a note on `PGxResult.phenotype`, not a dedicated field** — same interim limitation as TPMT's dosage-inferred-phase notes; a proper `interpretation_notes` field is Plan §6's report section 8, not built until Phase 6.
 - **VCF phase information and multi-allelic ALT fields** have the same limitations documented for TPMT (see above) — nothing here changes that.
 
-See `pgx_interpreter/genes/dpyd.py`'s module docstring for full citations, including the direct PharmCAT changelog quotes.
+**Tier 2 (drug recommendation, Phase 5):** fluorouracil, via `pgx_interpreter/evidence.py`, guideline `PA166122686` — CPIC's 2017 Update "Table 1: Recommended dosing of fluoropyrimidines by genotype/phenotype" (adapted November 2018), fetched directly from ClinPGx's live API. Keyed by **activity score**, not the three-tier phenotype label alone, since the real classification strength and one real exception both depend on it: AS 2.0 → no change (Strong); AS 1.5 → 50% reduction (Moderate); AS 1.0 → 50% reduction (Strong) **except** homozygous D949V (`c.[2846A>T];[2846A>T]`), which CPIC calls out by name as possibly needing a `>50%` reduction — `evidence.py` checks for that exact diplotype and swaps in the extended text, the one place this module's Tier 2 mapping is diplotype-aware rather than purely score-aware; AS 0.5 → avoid, or a strongly reduced dose with early TDM if no alternative (Strong); AS 0.0 → avoid (Strong).
+
+See `pgx_interpreter/genes/dpyd.py`'s module docstring for full Tier 1 citations, including the direct PharmCAT changelog quotes, and `pgx_interpreter/evidence.py`'s module docstring for the full Tier 2 citation.
 
 ## SLCO1B1 (Phase 4)
 
@@ -90,4 +94,8 @@ See `pgx_interpreter/genes/dpyd.py`'s module docstring for full citations, inclu
 - **"Possible decreased function" and "Increased function" phenotype categories can never be produced by this module**, since they depend on alleles it doesn't implement — documented here rather than silently absent.
 - **VCF phase information and multi-allelic ALT fields** have the same limitations documented for TPMT and DPYD.
 
-See `pgx_interpreter/genes/slco1b1.py`'s module docstring for full citations and the complete genotype-dosage truth table.
+See `pgx_interpreter/genes/slco1b1.py`'s module docstring for full Tier 1 citations and the complete genotype-dosage truth table.
+
+**Tier 2 (drug recommendation, Phase 5):** simvastatin, via `pgx_interpreter/evidence.py`, guideline `PA166105005` — CPIC's 2022 Update "Table 1: Recommended dosing of simvastatin based on SLCO1B1 phenotype", fetched directly from ClinPGx's live API. This module's three producible phenotype tiers all map cleanly: Normal function → desired starting dose (Strong); Decreased function → alternative statin, or simvastatin limited to <20mg/day if warranted (Strong); Poor function → alternative statin, no simvastatin dose-cap fallback given by CPIC for this tier so none is invented here (Strong). "Possible decreased function" and "Increased function" are out of scope (documented above) and this module can never produce them, so no Tier 2 entries exist for them either.
+
+See `pgx_interpreter/evidence.py`'s module docstring for the full Tier 2 citation and design rationale (why the embedded HTML dosing tables aren't parsed programmatically, and why `recommend()` is a separate step from `call_slco1b1`).

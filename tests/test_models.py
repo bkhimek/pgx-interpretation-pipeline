@@ -74,6 +74,9 @@ def test_tpmt_example_matches_plan_section5_worked_example():
         "phenotype_evidence_version": "2026-01-01",
         "recommendation_evidence_source": None,
         "recommendation_evidence_version": None,
+        "recommended_drug": None,
+        "recommendation_category": None,
+        "recommendation_guideline_source": None,
         "alternative_diplotypes": [],
     }
     assert _tpmt_example().to_dict() == expected
@@ -116,10 +119,20 @@ def test_activity_score_supports_dpyd_style_numeric_value():
 
 
 def test_recommendation_fields_default_to_none_until_phase5():
+    # Phase 5 (pgx_interpreter/evidence.py) now exists and populates these
+    # fields for results that go through evidence.recommend() -- see
+    # tests/test_evidence.py for that positive case. This test's job stays
+    # the same as it was in Phase 1: a PGxResult built directly (the normal
+    # output of call_tpmt/call_dpyd/call_slco1b1 on its own, Layers 1-3
+    # only, before any Layer 4 step runs) must still default every
+    # recommendation field to None/unset, not silently populate a guess.
     result = _tpmt_example()
     as_dict = result.to_dict()
     assert as_dict["recommendation_evidence_source"] is None
     assert as_dict["recommendation_evidence_version"] is None
+    assert as_dict["recommended_drug"] is None
+    assert as_dict["recommendation_category"] is None
+    assert as_dict["recommendation_guideline_source"] is None
     assert result.recommendation.drug is None
 
 
