@@ -16,12 +16,28 @@ CAPN3-DMD-variant-classifier project's tests/run_tests.py.
 Usage (from the repo root -- no src/ layout here, pgx_interpreter/ sits at
 repo root per Plan §6):
     PYTHONPATH=. python3 tests/run_tests.py
+
+## Skipping (added for Phase 6's optional `python-docx` dependency)
+
+A test may raise ``unittest.SkipTest`` to report SKIP rather than
+PASS/FAIL/ERROR -- used by ``test_report.py``'s docx tests when
+``python-docx`` isn't importable in the current environment (an *optional*
+dependency, per ``pyproject.toml``'s ``[docx]`` extra; the rest of this
+project's dependency-free-runner guarantee still holds for everything that
+doesn't need it). ``unittest`` is stdlib, so this needs no new dependency
+of its own -- and it's not a project-specific convention either:
+``unittest.SkipTest`` is pytest's own documented way to skip a plain test
+function without importing pytest
+(https://docs.pytest.org/en/stable/how-to/skipping.html#skipping-test-functions),
+so the exact same test already skips correctly under real pytest with zero
+special-casing there.
 """
 from __future__ import annotations
 
 import importlib.util
 import sys
 import traceback
+import unittest
 from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parent
@@ -47,6 +63,7 @@ def run() -> int:
         return 0
 
     total = 0
+    skipped: list[tuple[str, str]] = []
     failures: list[tuple[str, str]] = []
 
     for path in modules:
@@ -62,6 +79,9 @@ def run() -> int:
             try:
                 fn()
                 print(f"PASS  {full_name}")
+            except unittest.SkipTest as exc:
+                skipped.append((full_name, str(exc)))
+                print(f"SKIP  {full_name}: {exc}")
             except AssertionError:
                 failures.append((full_name, traceback.format_exc()))
                 print(f"FAIL  {full_name}")
@@ -70,7 +90,7 @@ def run() -> int:
                 print(f"ERROR {full_name}")
 
     print()
-    print(f"{total} test(s) run, {len(failures)} failed.")
+    print(f"{total} test(s) run, {len(failures)} failed, {len(skipped)} skipped.")
 
     if failures:
         print("\n--- Failure details ---")

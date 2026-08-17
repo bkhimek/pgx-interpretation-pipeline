@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** Phase 6 complete — TPMT, DPYD, and SLCO1B1 now go all the way from VCF to a rendered report (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML report), via `pgx_interpreter/report.py`'s assembly of the 10 report sections Plan §6 specifies. This phase also closed two long-documented interim limitations: TPMT/SLCO1B1's dosage-inferred-phase reasoning and the *3A-style unphased-ambiguity explanation (previously computed but silently dropped) and DPYD's HapB3 disagreement note (previously only inline in the phenotype string) are now all carried on `PGxResult.interpretation_notes` and surfaced in every report. See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and (updated) known limitations.
+**Status:** Phase 6 complete — TPMT, DPYD, and SLCO1B1 now go all the way from VCF to a rendered report (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML/Markdown/docx report), via `pgx_interpreter/report.py`'s assembly of the 10 report sections Plan §6 specifies. This phase also closed two long-documented interim limitations: TPMT/SLCO1B1's dosage-inferred-phase reasoning and the *3A-style unphased-ambiguity explanation (previously computed but silently dropped) and DPYD's HapB3 disagreement note (previously only inline in the phenotype string) are now all carried on `PGxResult.interpretation_notes` and surfaced in every report. See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and (updated) known limitations.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -68,7 +68,8 @@ pgx-interpretation-pipeline/
 │   ├── schema.py
 │   ├── normalize.py
 │   ├── evidence.py             # Phase 5: Tier 2 fetch/validate/stamp/cache adapter + recommend()
-│   ├── report.py               # Phase 6: report assembly, JSON/TSV/HTML, sections 1-10
+│   ├── report.py               # Phase 6: report assembly, sections 1-10, 5 renderers
+│   │                           #   (JSON/TSV/HTML/Markdown stdlib-only; docx needs [docx] extra)
 │   └── genes/
 │       ├── tpmt.py
 │       ├── dpyd.py
@@ -100,6 +101,8 @@ Developed via Claude Cowork sessions (isolated sandbox, no direct WSL access) an
 PYTHONPATH=. pytest -q                 # if PyPI access is available
 PYTHONPATH=. python3 tests/run_tests.py  # dependency-free fallback, always works
 ```
+
+`tests/run_tests.py` reports `SKIP` (not `FAIL`) for tests that need an optional dependency that isn't installed — currently just `to_docx()`'s tests, which need `pip install -e .[docx]`. This is the same mechanism pytest itself uses (`unittest.SkipTest`), so both runners treat it identically.
 
 ## License
 

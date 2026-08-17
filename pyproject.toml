@@ -10,13 +10,17 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Krzysztof Gizynski" }]
-dependencies = [
-    "PyYAML>=6.0",
-]
+dependencies = []
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+]
+# Phase 6: pgx_interpreter.report.to_docx() only. Every other renderer
+# (to_json/to_tsv/to_html/to_markdown) is stdlib-only and needs nothing
+# from this extra.
+docx = [
+    "python-docx>=1.1",
 ]
 
 [tool.setuptools.packages.find]

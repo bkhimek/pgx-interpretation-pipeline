@@ -18,9 +18,17 @@ guidance) and assembles them into the report shape Plan §6 specifies:
 Sections 2-9 are per-gene (one `PGxResult` each); sections 1 and 10 are
 report-level, computed once regardless of how many genes are included.
 
-Rendered in the two formats Plan §6 asks for as v1 outputs, plus the third:
-JSON (`to_json`), TSV (`to_tsv`), HTML (`to_html`). PDF is explicitly
-optional per the plan and is not built here.
+Rendered in the three formats Plan §6 asks for as v1 outputs: JSON
+(`to_json`), TSV (`to_tsv`), HTML (`to_html`). PDF is explicitly optional
+per the plan and is not built here. Two further formats were added after
+Phase 6's initial delivery, at the user's request, as permanent, tested
+outputs rather than one-off scripts: Markdown (`to_markdown`, stdlib-only)
+and Word (`to_docx`, needs the optional `python-docx` dependency -- see
+`pyproject.toml`'s `[project.optional-dependencies].docx` extra). All five
+renderers consume the same `_gene_section()` intermediate representation
+(the flattened per-gene dict `to_json`/`to_html` already built on) rather
+than each re-deriving section content from `PGxResult` independently --
+one place to keep the 10 sections' content correct, five ways to render it.
 
 ## Deliberately NOT built here
 
@@ -390,3 +398,244 @@ def to_html(report: Report) -> str:
 </body>
 </html>
 """
+
+
+# --- Markdown (stdlib-only) ---
+
+
+def _markdown_table(headers: list, rows: list) -> str:
+    lines = ["| " + " | ".join(headers) + " |", "|" + "|".join(["---"] * len(headers)) + "|"]
+    for row in rows:
+        cells = ["" if c is None else str(c) for c in row]
+        lines.append("| " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
+def _markdown_gene_section(section: dict) -> str:
+    if section["observed_variants"]:
+        variant_rows = [
+            [f"{v['chrom']}:{v['pos']}", f"{v['ref']}>{v['alt']}", v["zygosity"], v["rsid"]]
+            for v in section["observed_variants"]
+        ]
+    else:
+        variant_rows = [["none observed", "", "", ""]]
+
+    adi = section["allele_diplotype_interpretation"]
+    alt_diplotypes = ", ".join(adi["alternative_diplotypes"]) or "none"
+
+    pheno = section["predicted_phenotype"]
+    score_part = f", activity score: {pheno['activity_score']}" if pheno["activity_score"] is not None else ""
+
+    gdr = section["gene_drug_relationship"]
+    drug_line = (
+        f"**{gdr['drug']}:** {gdr['recommendation_category']}"
+        if gdr["drug"]
+        else "*No drug recommendation attached to this result.*"
+    )
+
+    gsv = section["guideline_source_version"]
+
+    notes = (
+        "\n".join(f"- {n}" for n in section["interpretation_notes"])
+        if section["interpretation_notes"]
+        else "*None.*"
+    )
+    limitations = "\n".join(f"- {n}" for n in section["limitations"])
+
+    return "\n\n".join(
+        [
+            f"## {section['gene']} ({section['genome_build']})",
+            "### 3. Observed relevant variants",
+            _markdown_table(["Position", "REF>ALT", "Zygosity", "rsID"], variant_rows),
+            "### 4. Allele / diplotype interpretation",
+            f"**Diplotype:** {adi['diplotype']} (phase: {adi['phase_status']})  \n"
+            f"**Alternative diplotype(s):** {alt_diplotypes}",
+            "### 5. Predicted phenotype",
+            f"**{pheno['phenotype']}** (confidence: {pheno['confidence']}{score_part})",
+            "### 6. Relevant gene-drug relationship(s)",
+            drug_line,
+            "### 7. Guideline source/version",
+            _markdown_table(
+                ["", "Source", "Version"],
+                [
+                    ["Allele definitions", gsv["allele_definition_source"], gsv["allele_definition_version"]],
+                    [
+                        "Phenotype evidence (Tier 1)",
+                        gsv["phenotype_evidence_source"],
+                        gsv["phenotype_evidence_version"],
+                    ],
+                    [
+                        "Recommendation evidence (Tier 2)",
+                        gsv["recommendation_evidence_source"] or "not attached",
+                        gsv["recommendation_evidence_version"],
+                    ],
+                ],
+            ),
+            "### 8. Interpretation notes",
+            notes,
+            "### 9. Limitations",
+            limitations,
+        ]
+    )
+
+
+def to_markdown(report: Report) -> str:
+    """Same 10 sections as `to_html()`, as GitHub-flavored Markdown.
+    Stdlib-only -- no dependency beyond the standard library, unlike
+    `to_docx()` below."""
+    gene_sections = "\n\n---\n\n".join(_markdown_gene_section(_gene_section(r)) for r in report.results)
+    return "\n\n".join(
+        [
+            "# PGx Interpretation Report",
+            f"**1. Sample:** {report.sample_id}  \n**Generated:** {report.generated_at}",
+            f"> **Disclaimer:** {SOFTWARE_DISCLAIMER}",
+            "---",
+            gene_sections,
+            "---",
+            "## 10. Technical provenance",
+            TECHNICAL_PROVENANCE,
+        ]
+    )
+
+
+# --- Word (.docx) -- needs the optional `python-docx` dependency ---
+
+
+def _docx_shade_cell(cell, color_hex: str) -> None:
+    """python-docx has no high-level cell-shading API; this is the
+    standard low-level OOXML technique (add a <w:shd> element to the
+    cell's <w:tcPr>) used throughout the python-docx ecosystem for it."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    tc_pr = cell._tc.get_or_add_tcPr()
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:fill"), color_hex)
+    tc_pr.append(shd)
+
+
+def _docx_add_table(document, headers: list, rows: list):
+    table = document.add_table(rows=1, cols=len(headers))
+    table.style = "Table Grid"
+    for cell, header in zip(table.rows[0].cells, headers):
+        cell.text = header
+        for paragraph in cell.paragraphs:
+            for run in paragraph.runs:
+                run.bold = True
+        _docx_shade_cell(cell, "EDEDED")
+    for row_values in rows:
+        cells = table.add_row().cells
+        for cell, value in zip(cells, row_values):
+            cell.text = "" if value is None else str(value)
+    return table
+
+
+def _docx_add_gene_section(document, section: dict) -> None:
+    document.add_heading(f"{section['gene']} ({section['genome_build']})", level=1)
+
+    document.add_heading("3. Observed relevant variants", level=2)
+    if section["observed_variants"]:
+        rows = [
+            [f"{v['chrom']}:{v['pos']}", f"{v['ref']}>{v['alt']}", v["zygosity"], v["rsid"]]
+            for v in section["observed_variants"]
+        ]
+    else:
+        rows = [["none observed", "", "", ""]]
+    _docx_add_table(document, ["Position", "REF>ALT", "Zygosity", "rsID"], rows)
+
+    adi = section["allele_diplotype_interpretation"]
+    document.add_heading("4. Allele / diplotype interpretation", level=2)
+    p = document.add_paragraph()
+    p.add_run("Diplotype: ").bold = True
+    p.add_run(f"{adi['diplotype']} (phase: {adi['phase_status']})")
+    alt_diplotypes = ", ".join(adi["alternative_diplotypes"]) or "none"
+    document.add_paragraph(f"Alternative diplotype(s): {alt_diplotypes}")
+
+    pheno = section["predicted_phenotype"]
+    document.add_heading("5. Predicted phenotype", level=2)
+    p = document.add_paragraph()
+    p.add_run(pheno["phenotype"]).bold = True
+    score_part = f", activity score: {pheno['activity_score']}" if pheno["activity_score"] is not None else ""
+    p.add_run(f"  (confidence: {pheno['confidence']}{score_part})")
+
+    gdr = section["gene_drug_relationship"]
+    document.add_heading("6. Relevant gene-drug relationship(s)", level=2)
+    if gdr["drug"]:
+        p = document.add_paragraph()
+        p.add_run(f"{gdr['drug']}: ").bold = True
+        p.add_run(gdr["recommendation_category"])
+    else:
+        p = document.add_paragraph()
+        p.add_run("No drug recommendation attached to this result.").italic = True
+
+    gsv = section["guideline_source_version"]
+    document.add_heading("7. Guideline source/version", level=2)
+    _docx_add_table(
+        document,
+        ["", "Source", "Version"],
+        [
+            ["Allele definitions", gsv["allele_definition_source"], gsv["allele_definition_version"]],
+            ["Phenotype evidence (Tier 1)", gsv["phenotype_evidence_source"], gsv["phenotype_evidence_version"]],
+            [
+                "Recommendation evidence (Tier 2)",
+                gsv["recommendation_evidence_source"] or "not attached",
+                gsv["recommendation_evidence_version"],
+            ],
+        ],
+    )
+
+    document.add_heading("8. Interpretation notes", level=2)
+    if section["interpretation_notes"]:
+        for note in section["interpretation_notes"]:
+            document.add_paragraph(note, style="List Bullet")
+    else:
+        p = document.add_paragraph()
+        p.add_run("None.").italic = True
+
+    document.add_heading("9. Limitations", level=2)
+    for item in section["limitations"]:
+        document.add_paragraph(item, style="List Bullet")
+
+
+def to_docx(report: Report) -> bytes:
+    """Same 10 sections as `to_html()`/`to_markdown()`, as a .docx file,
+    returned as bytes (write it to a file yourself -- this function has no
+    opinion on where a report ends up on disk, matching the other four
+    renderers).
+
+    Requires the optional `python-docx` dependency (`pip install
+    pgx-interpretation-pipeline[docx]`, or `pip install python-docx`
+    directly) -- imported lazily here so building a JSON/TSV/HTML/Markdown
+    report never requires it. Raises a clear `ImportError` with install
+    instructions if it isn't available, rather than a bare `ModuleNotFoundError`
+    pointing at an internal import line.
+    """
+    try:
+        import docx
+    except ImportError as exc:
+        raise ImportError(
+            "to_docx() requires the optional 'python-docx' package. Install it with "
+            "'pip install python-docx' (or the project's [docx] extra) and try again."
+        ) from exc
+
+    document = docx.Document()
+    document.add_heading("PGx Interpretation Report", level=0)
+    p = document.add_paragraph()
+    p.add_run(f"1. Sample: {report.sample_id}    Generated: {report.generated_at}")
+
+    disclaimer_table = document.add_table(rows=1, cols=1)
+    cell = disclaimer_table.rows[0].cells[0]
+    dp = cell.paragraphs[0]
+    dp.add_run("Disclaimer: ").bold = True
+    dp.add_run(SOFTWARE_DISCLAIMER)
+    _docx_shade_cell(cell, "FFF3CD")
+
+    for result in report.results:
+        _docx_add_gene_section(document, _gene_section(result))
+
+    document.add_heading("10. Technical provenance", level=1)
+    document.add_paragraph(TECHNICAL_PROVENANCE)
+
+    buf = io.BytesIO()
+    document.save(buf)
+    return buf.getvalue()

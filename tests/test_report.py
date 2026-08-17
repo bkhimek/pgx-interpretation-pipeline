@@ -1,5 +1,5 @@
 """Phase 6 tests: pgx_interpreter.report, per PGx_Project_Plan.md Section 5,
-Phase 6 (report assembly, sections 1-10, JSON/TSV/HTML).
+Phase 6 (report assembly, sections 1-10, JSON/TSV/HTML/Markdown/docx).
 
 Network-free by construction: report.py never calls evidence.recommend()
 or a gene function itself, so these tests build real PGxResults through the
@@ -9,11 +9,33 @@ recommendation via evidence.recommend() pointed at the committed evidence
 fixtures for the one case that needs it, then hand the results to
 build_report().
 
+The to_docx() tests need the optional `python-docx` dependency
+(pyproject.toml's [docx] extra) -- guarded with unittest.SkipTest so this
+module runs cleanly (with those specific tests reported as SKIP, not
+FAIL) in an environment that doesn't have it installed. This is the exact
+mechanism pytest documents for skipping a plain test function without
+importing pytest, so it needs no special-casing to also work correctly
+under real pytest -- see tests/run_tests.py's module docstring.
+
 Plain `assert` statements only -- must run identically under pytest and
 tests/run_tests.py (DEVELOPMENT_WORKFLOW.md item 2).
 """
+import io
 import json
+import unittest
 from pathlib import Path
+
+try:
+    import docx as python_docx
+
+    _DOCX_AVAILABLE = True
+except ImportError:
+    _DOCX_AVAILABLE = False
+
+
+def _require_docx() -> None:
+    if not _DOCX_AVAILABLE:
+        raise unittest.SkipTest("python-docx not installed (optional [docx] extra)")
 
 from pgx_interpreter import report
 from pgx_interpreter.evidence import recommend
@@ -264,5 +286,145 @@ def test_html_report_multi_gene_includes_every_gene_section():
     rep = report.build_report(results)
     document = report.to_html(rep)
     assert document.count('<section class="gene-section">') == 2
+
+
+# --- to_markdown(): same 10 sections, stdlib-only, no optional dependency ---
+
+
+def test_markdown_report_contains_all_sections_and_disclaimer():
+    result = recommend(_tpmt("normal_function.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR)
+    rep = report.build_report((result,), generated_at="2026-08-17T00:00:00+00:00")
+    document = report.to_markdown(rep)
+    assert document.startswith("# PGx Interpretation Report")
+    for heading in [
+        "### 3. Observed relevant variants",
+        "### 4. Allele / diplotype interpretation",
+        "### 5. Predicted phenotype",
+        "### 6. Relevant gene-drug relationship",
+        "### 7. Guideline source/version",
+        "### 8. Interpretation notes",
+        "### 9. Limitations",
+        "## 10. Technical provenance",
+    ]:
+        assert heading in document
+    assert "not been independently validated for clinical use" in document
     assert "TPMT" in document
-    assert "SLCO1B1" in document
+    assert "azathioprine" in document
+
+
+def test_markdown_report_renders_a_real_table():
+    result = _tpmt("het_reduced_function.vcf")
+    rep = report.build_report((result,))
+    document = report.to_markdown(rep)
+    assert "| Position | REF>ALT | Zygosity | rsID |" in document
+    assert "|---|---|---|---|" in document
+
+
+def test_markdown_report_surfaces_interpretation_notes():
+    result = _tpmt("star3a_unphased_ambiguous.vcf")
+    rep = report.build_report((result,))
+    document = report.to_markdown(rep)
+    assert "cannot be distinguished without phasing information" in document
+
+
+def test_markdown_report_no_recommendation_is_explicit_not_omitted():
+    result = _tpmt("star3a_unphased_ambiguous.vcf")
+    rep = report.build_report((result,))
+    document = report.to_markdown(rep)
+    assert "No drug recommendation attached to this result." in document
+
+
+def test_markdown_report_multi_gene_separates_sections():
+    results = (_tpmt("normal_function.vcf", "HG002"), _dpyd("normal_function.vcf", "HG002"))
+    rep = report.build_report(results)
+    document = report.to_markdown(rep)
+    assert document.count("## TPMT") == 1
+    assert document.count("## DPYD") == 1
+    assert "---" in document  # gene sections are separated
+
+
+# --- to_docx(): same 10 sections, needs the optional python-docx dependency ---
+
+
+def test_docx_report_is_a_valid_zip_container():
+    _require_docx()
+    result = _tpmt("normal_function.vcf")
+    rep = report.build_report((result,))
+    data = report.to_docx(rep)
+    assert isinstance(data, bytes)
+    assert data[:4] == b"PK\x03\x04"  # docx is a zip archive
+
+
+def test_docx_report_round_trips_gene_content_via_python_docx():
+    _require_docx()
+    result = recommend(_tpmt("normal_function.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR)
+    rep = report.build_report((result,))
+    data = report.to_docx(rep)
+    document = python_docx.Document(io.BytesIO(data))
+    body_text = "\n".join(p.text for p in document.paragraphs)
+    assert "TPMT" in body_text
+    assert "Normal Metabolizer" in body_text
+    assert "azathioprine" in body_text
+
+
+def test_docx_report_disclaimer_is_in_a_shaded_table_not_a_body_paragraph():
+    # The disclaimer lives in a table cell (for the shaded-box treatment),
+    # not a plain body paragraph -- confirm it's actually reachable via
+    # python-docx's own object model, not just present as raw XML text.
+    _require_docx()
+    result = _tpmt("normal_function.vcf")
+    rep = report.build_report((result,))
+    data = report.to_docx(rep)
+    document = python_docx.Document(io.BytesIO(data))
+    assert len(document.tables) >= 1
+    disclaimer_cell_text = document.tables[0].rows[0].cells[0].text
+    assert "not been independently validated for clinical use" in disclaimer_cell_text
+
+
+def test_docx_report_multi_gene_has_one_heading_per_gene():
+    _require_docx()
+    results = (_tpmt("normal_function.vcf", "HG002"), _slco1b1("normal_function.vcf", "HG002"))
+    rep = report.build_report(results)
+    data = report.to_docx(rep)
+    document = python_docx.Document(io.BytesIO(data))
+    heading_texts = [p.text for p in document.paragraphs if p.style.name.startswith("Heading 1")]
+    assert any(h.startswith("TPMT") for h in heading_texts)
+    assert any(h.startswith("SLCO1B1") for h in heading_texts)
+
+
+def test_docx_report_interpretation_notes_present_as_bullets():
+    _require_docx()
+    result = _tpmt("two_no_function_alleles.vcf")
+    rep = report.build_report((result,))
+    data = report.to_docx(rep)
+    document = python_docx.Document(io.BytesIO(data))
+    bullet_texts = [p.text for p in document.paragraphs if p.style.name == "List Bullet"]
+    assert any("phase inferred from genotype dosage" in t for t in bullet_texts)
+
+
+def test_to_docx_raises_clear_import_error_when_unavailable(monkeypatch=None):
+    # Simulate python-docx being unavailable by forcing the internal
+    # `import docx` inside to_docx() to fail, and confirm the resulting
+    # error is report.py's own descriptive ImportError (with install
+    # instructions), not a bare ModuleNotFoundError leaking an internal
+    # import line. Implemented via sys.modules manipulation rather than a
+    # pytest fixture (monkeypatch) so this still runs under
+    # tests/run_tests.py's plain-function discovery.
+    import sys
+
+    result = _tpmt("normal_function.vcf")
+    rep = report.build_report((result,))
+
+    real_docx_module = sys.modules.pop("docx", None)
+    sys.modules["docx"] = None  # forces `import docx` to raise ImportError
+    try:
+        try:
+            report.to_docx(rep)
+            assert False, "expected ImportError when 'docx' is unavailable"
+        except ImportError as exc:
+            assert "python-docx" in str(exc)
+            assert "pip install" in str(exc)
+    finally:
+        del sys.modules["docx"]
+        if real_docx_module is not None:
+            sys.modules["docx"] = real_docx_module
