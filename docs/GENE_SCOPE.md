@@ -33,6 +33,8 @@ What each supported gene actually covers, and what it deliberately doesn't. Upda
 
 See `pgx_interpreter/genes/tpmt.py`'s module docstring for the full genotype-dosage truth table and citations, and `pgx_interpreter/evidence.py`'s module docstring for the full Tier 2 citation and design rationale.
 
+**Validated against real reference material (Phase 7):** 6 real GeT-RM (CDC) consensus-genotype samples, including two real `*1/*3A` samples whose GeT-RM ground truth required external phasing this project's genotype-only input correctly declines to assert without — see `docs/VALIDATION.md` §3.
+
 ## DPYD (Phase 3)
 
 **Model:** activity-score summation, deliberately different from TPMT's diplotype lookup (Plan RQ2: can one architecture support pharmacogenes with fundamentally different phenotype-assignment models?). Each of four independent loci contributes a function score (normal = 1.0, decreased = 0.5, no function = 0); the two haplotype-level scores sum to a diplotype-level activity score, and CPIC's own activity-score table — not the specific allele pairing — determines the phenotype. `activity_score` is genuinely populated for the first time in this project.
@@ -65,6 +67,8 @@ See `pgx_interpreter/genes/tpmt.py`'s module docstring for the full genotype-dos
 **Tier 2 (drug recommendation, Phase 5):** fluorouracil, via `pgx_interpreter/evidence.py`, guideline `PA166122686` — CPIC's 2017 Update "Table 1: Recommended dosing of fluoropyrimidines by genotype/phenotype" (adapted November 2018), fetched directly from ClinPGx's live API. Keyed by **activity score**, not the three-tier phenotype label alone, since the real classification strength and one real exception both depend on it: AS 2.0 → no change (Strong); AS 1.5 → 50% reduction (Moderate); AS 1.0 → 50% reduction (Strong) **except** homozygous D949V (`c.[2846A>T];[2846A>T]`), which CPIC calls out by name as possibly needing a `>50%` reduction — `evidence.py` checks for that exact diplotype and swaps in the extended text, the one place this module's Tier 2 mapping is diplotype-aware rather than purely score-aware; AS 0.5 → avoid, or a strongly reduced dose with early TDM if no alternative (Strong); AS 0.0 → avoid (Strong).
 
 See `pgx_interpreter/genes/dpyd.py`'s module docstring for full Tier 1 citations, including the direct PharmCAT changelog quotes, and `pgx_interpreter/evidence.py`'s module docstring for the full Tier 2 citation.
+
+**Validated against real reference material (Phase 7):** 8 real GeT-RM (CDC) consensus-genotype samples, including one (HG00118) that turned out to be a real-world instance of this module's documented multi-locus scope limitation above — see `docs/VALIDATION.md` §3.
 
 ## SLCO1B1 (Phase 4)
 

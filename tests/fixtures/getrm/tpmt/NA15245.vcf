@@ -1,0 +1,23 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr6>
+# GeT-RM reference material, Coriell ID NA15245. GeT-RM consensus
+# diplotype: *1/*3A -- phase confirmed by 10x Linked-Read Genomics or trio
+# analysis (external phasing data this project's VCF-only input does not
+# have access to). Source: Pratt VM et al., "Characterization of Reference
+# Materials for TPMT and NUDT15: A GeT-RM Collaborative Project." J Mol
+# Diagn 2022;24:1079-1088 (PMID 35850928), Table 1, as reproduced in CDC's
+# public-domain data table
+# (https://www.cdc.gov/lab-quality/media/pdfs/2024/08/TPMT-and-NUDT15-reference-materials_508C.pdf,
+# retrieved 2026-08-17).
+#
+# Genotype-only note (see docs/VALIDATION.md): both *3-family defining
+# positions are heterozygous here -- this project's genes/tpmt.py correctly
+# reports this as AMBIGUOUS (cis *1/*3A vs trans *3B/*3C), listing *1/*3A as
+# one of the two candidates, since dosage alone cannot resolve it without
+# the external phasing GeT-RM used. This is the expected, scientifically
+# correct behavior for genotype-only input, not a pipeline error.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr6	18130687	rs1142345	T	C	99	PASS	.	GT	0/1
+chr6	18138997	rs1800460	C	T	99	PASS	.	GT	0/1
+chr6	18143724	rs1800462	C	G	99	PASS	.	GT	0/0

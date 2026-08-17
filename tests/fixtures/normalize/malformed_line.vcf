@@ -1,0 +1,10 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr1>
+# Synthetic, Layer-1-only fixture -- the second data line below is
+# deliberately truncated (fewer than 8 tab-separated columns), exercising
+# normalize.py's documented "skip rather than guess" behavior for a
+# malformed data line. See test_normalize.py.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr1	100	.	A	G	99	PASS	.	GT	0/1
+chr1	200	.	A	G

@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr1>
+# Synthetic, Layer-1-only fixture -- GT="1/2" is a real multi-allelic
+# genotype index this project's zygosity vocabulary does not define.
+# Exercises normalize.py's documented "maps to missing rather than
+# guessing" behavior for an unrecognized GT value. See test_normalize.py.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr1	100	.	A	C,G	99	PASS	.	GT	1/2

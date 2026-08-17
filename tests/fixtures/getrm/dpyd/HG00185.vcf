@@ -1,0 +1,23 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr1>
+# GeT-RM reference material, Coriell ID HG00185 (Finnish in Finland, 1000
+# Genomes). GeT-RM genotype-level data (Tier1_c.1905+1G>A = G/A
+# heterozygous; all other Tier 1 positions homozygous reference) retrieved
+# via Coriell's GeT-RM PGx Search tool
+# (https://www.coriell.org/GeTRM/PGxSearch, gene=DPYD), 2026-08-17. Source
+# study: Gaedigk A et al., "Characterization of Reference Materials for
+# DPYD: A GeT-RM Collaborative Project." J Mol Diagn 2024;26:864-875 (PMID
+# 39032822).
+#
+# HapB3 exonic tag (c.1236G>A) genotype for this sample was not retrieved
+# this session (browser-tool instability cut off data collection before
+# this column could be confirmed) -- represented as a no-call below rather
+# than fabricated. Does not affect the result: HapB3-intronic is confirmed
+# homozygous reference, so this locus is *2A-driven regardless.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr1	97082391	rs67376798	T	A	99	PASS	.	GT	0/0
+chr1	97450058	rs3918290	C	T	99	PASS	.	GT	0/1
+chr1	97515787	rs55886062	A	C	99	PASS	.	GT	0/0
+chr1	97573863	rs56038477	C	T	99	PASS	.	GT	./.
+chr1	97579893	rs75017182	G	C	99	PASS	.	GT	0/0

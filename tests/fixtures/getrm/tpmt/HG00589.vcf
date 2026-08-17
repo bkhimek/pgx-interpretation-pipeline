@@ -1,0 +1,17 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr6>
+# GeT-RM reference material, Coriell ID HG00589 (Han Chinese South, China,
+# 1000 Genomes). GeT-RM consensus diplotype: *1/*3C (confirmed, only lab
+# tested reported *1/*3C). Source: Pratt VM et al., "Characterization of
+# Reference Materials for TPMT and NUDT15: A GeT-RM Collaborative Project."
+# J Mol Diagn 2022;24:1079-1088 (PMID 35850928), Table 1, as reproduced in
+# CDC's public-domain data table
+# (https://www.cdc.gov/lab-quality/media/pdfs/2024/08/TPMT-and-NUDT15-reference-materials_508C.pdf,
+# retrieved 2026-08-17). Genotype below constructed from this project's own
+# dbSNP-confirmed defining-variant coordinates (genes/tpmt.py), not
+# redistributed from GeT-RM/Coriell/CDC directly.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr6	18130687	rs1142345	T	C	99	PASS	.	GT	0/1
+chr6	18138997	rs1800460	C	T	99	PASS	.	GT	0/0
+chr6	18143724	rs1800462	C	G	99	PASS	.	GT	0/0

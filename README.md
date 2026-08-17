@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** Phase 6 complete — TPMT, DPYD, and SLCO1B1 now go all the way from VCF to a rendered report (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML/Markdown/docx report), via `pgx_interpreter/report.py`'s assembly of the 10 report sections Plan §6 specifies. This phase also closed two long-documented interim limitations: TPMT/SLCO1B1's dosage-inferred-phase reasoning and the *3A-style unphased-ambiguity explanation (previously computed but silently dropped) and DPYD's HapB3 disagreement note (previously only inline in the phenotype string) are now all carried on `PGxResult.interpretation_notes` and surfaced in every report. See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and (updated) known limitations.
+**Status:** Phase 7 complete — validation and benchmarking. Real GeT-RM (CDC) reference-material samples now cross-validate TPMT and DPYD against independently published consensus genotypes (14 samples, all exact matches or correctly-declined ambiguous/multi-locus cases — see `docs/VALIDATION.md`); a genuine test-coverage gap in `normalize.py`'s genotype parsing was found and closed; PharmCAT comparison was documented against its own published methodology (a live run was attempted and found infeasible in this sandbox — see `docs/VALIDATION.md` §4 for the specific reasons). TPMT, DPYD, and SLCO1B1 go all the way from VCF to a rendered report (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML/Markdown/docx report) via `pgx_interpreter/report.py`. See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and known limitations.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -38,7 +38,7 @@ Not a validated clinical diagnostic system, not an autonomous prescribing system
 - `THIRD_PARTY_DATA.md` — quick-reference summary of the above
 - `docs/GENE_SCOPE.md` — per-gene allele coverage, defining variants, and explicit known limitations
 - `docs/ARCHITECTURE_REVIEW_V01.md` — Architecture Review 1 (after TPMT + DPYD + SLCO1B1): what's universal vs. gene-specific, what schema fields turned out unused, and a concrete refactor recommendation for CYP2C19
-- `docs/VALIDATION.md` — planned for Phase 7
+- `docs/VALIDATION.md` — Phase 7: unit test coverage review, real GeT-RM reference-material cross-validation (TPMT/DPYD), and a documented PharmCAT comparison
 
 ## Architecture
 
@@ -52,7 +52,7 @@ Evidence is fetched via a versioned adapter (fetch → validate → stamp with r
 
 ## Repository structure
 
-Current state (Phase 6). The full target layout — `cyp2c19.py` (Phase 8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
+Current state (Phase 7). The full target layout — `cyp2c19.py` (Phase 8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
 
 ```text
 pgx-interpretation-pipeline/
@@ -61,7 +61,8 @@ pgx-interpretation-pipeline/
 ├── docs/
 │   ├── PGX_FOUNDATIONS.md
 │   ├── DATA_SOURCES_AND_LICENSING.md
-│   └── GENE_SCOPE.md
+│   ├── GENE_SCOPE.md
+│   └── VALIDATION.md           # Phase 7: coverage review, GeT-RM cross-validation, PharmCAT comparison
 ├── modules/local/
 ├── pgx_interpreter/
 │   ├── models.py
@@ -77,15 +78,19 @@ pgx-interpretation-pipeline/
 ├── tests/
 │   ├── run_tests.py
 │   ├── test_models.py
+│   ├── test_normalize.py       # Phase 7: direct Layer 1 parsing coverage (phased GT, multi-allelic ALT, ...)
 │   ├── test_tpmt.py
 │   ├── test_dpyd.py
 │   ├── test_slco1b1.py
 │   ├── test_evidence.py
 │   ├── test_report.py
+│   ├── test_getrm_validation.py  # Phase 7: real GeT-RM reference-material cross-validation
+│   ├── fixtures/normalize/     # 5 VCF fixtures, Layer-1-only
 │   ├── fixtures/tpmt/          # 7 VCF fixtures
-│   ├── fixtures/dpyd/          # 11 VCF fixtures
+│   ├── fixtures/dpyd/          # 12 VCF fixtures
 │   ├── fixtures/slco1b1/       # 12 VCF fixtures
-│   └── fixtures/evidence/      # 3 real ClinPGx guideline-annotation payloads, network-free tests
+│   ├── fixtures/evidence/      # 3 real ClinPGx guideline-annotation payloads, network-free tests
+│   └── fixtures/getrm/         # 14 real GeT-RM sample fixtures (tpmt/, dpyd/), see docs/VALIDATION.md
 ├── pyproject.toml
 ├── LICENSE                     # MIT — this project's own code
 ├── THIRD_PARTY_DATA.md
