@@ -40,6 +40,7 @@ def test_normal_function_genotype_is_star1_star1():
     assert d["phenotype"] == "Normal Metabolizer"
     assert d["alternative_diplotypes"] == []
     assert d["activity_score"] is None  # TPMT is a diplotype-lookup gene, not activity-score
+    assert d["interpretation_notes"] == []  # nothing to explain for a clean, unambiguous call
 
 
 def test_heterozygous_reduced_function_is_star1_star3c():
@@ -66,6 +67,11 @@ def test_two_no_function_alleles_resolved_via_dosage_inference():
     assert d["confidence"] == "supported"
     assert d["phenotype"] == "Poor Metabolizer"
     assert d["alternative_diplotypes"] == []
+    # Phase 6: the dosage-inference reasoning was computed since Phase 2 but
+    # previously dropped for SUPPORTED results (GENE_SCOPE.md's documented
+    # interim limitation) -- now surfaced via interpretation_notes.
+    assert len(d["interpretation_notes"]) == 1
+    assert "phase inferred from genotype dosage" in d["interpretation_notes"][0]
 
 
 def test_missing_genotype_yields_insufficient_data_not_a_guess():
@@ -121,6 +127,12 @@ def test_star3a_vs_star3b_star3c_unphased_ambiguity():
     # surfaced, not just one arbitrarily picked.
     assert "Intermediate Metabolizer" in d["phenotype"]
     assert "Poor Metabolizer" in d["phenotype"]
+    # Phase 6: the actual cis-vs-trans explanation was computed by
+    # _call_3_family_diplotype since Phase 2 but previously dropped for
+    # AMBIGUOUS results too (only the phenotype's "(phase unknown -- see
+    # alternative_diplotypes)" suffix survived) -- now surfaced in full.
+    assert len(d["interpretation_notes"]) == 1
+    assert "cannot be distinguished without phasing information" in d["interpretation_notes"][0]
 
 
 def test_star3a_candidates_individually_would_give_different_phenotypes():

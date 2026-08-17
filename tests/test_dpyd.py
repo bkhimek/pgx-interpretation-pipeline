@@ -120,6 +120,13 @@ def test_hapb3_exonic_tag_without_causal_intronic_variant_is_not_called():
     assert d["confidence"] == "supported"
     assert d["phenotype"].startswith("Normal Metabolizer")
     assert "disagree" in d["phenotype"]
+    # Phase 6: the same disagreement note, also available as a standalone
+    # interpretation note (not just embedded inline in the phenotype
+    # string) -- this is the exact real-world false-positive-avoidance case
+    # the report's "Interpretation notes" section (Plan §5 Phase 6) exists
+    # to surface clearly.
+    assert len(d["interpretation_notes"]) == 1
+    assert "disagree" in d["interpretation_notes"][0]
 
 
 def test_hapb3_intronic_missing_with_only_exonic_hom_ref_is_insufficient_data():

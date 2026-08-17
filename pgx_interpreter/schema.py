@@ -40,6 +40,7 @@ PGX_RESULT_JSON_SCHEMA: dict = {
         "recommendation_category",
         "recommendation_guideline_source",
         "alternative_diplotypes",
+        "interpretation_notes",
     ],
     "properties": {
         "sample_id": {"type": "string"},
@@ -85,6 +86,17 @@ PGX_RESULT_JSON_SCHEMA: dict = {
                 "Phase 2 addition (Plan §3a): other diplotype(s) equally "
                 "consistent with the observed genotype when phase_status is "
                 "unphased_ambiguous. Empty otherwise."
+            ),
+        },
+        "interpretation_notes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": (
+                "Phase 6 addition (Plan §5 Phase 6, report section 8): "
+                "explanatory notes computed by a gene module (dosage-"
+                "inferred phase, unphased-ambiguity reasoning, HapB3 "
+                "exonic/intronic disagreement, etc.). Empty when a gene "
+                "module has nothing to report."
             ),
         },
     },

@@ -185,6 +185,13 @@ def call_slco1b1(
         diplotype=diplotype,
         alternative_diplotypes=alternatives,
         phenotype=phenotype,
+        # Phase 6 addition (see tpmt.py's identical comment): `note` covers
+        # dosage-inferred phase and the unphased-ambiguity explanation
+        # (previously silently dropped for SUPPORTED/AMBIGUOUS results) as
+        # well as the unsupported-allele/insufficient-data detail (already
+        # inline in the phenotype string, now also surfaced here). The
+        # phenotype string's existing text is unchanged.
+        interpretation_notes=(note,) if note else (),
     )
 
 

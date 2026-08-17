@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** Phase 5 complete — TPMT, DPYD, and SLCO1B1 now go all the way from VCF to a guideline-linked drug recommendation (variant → allele/diplotype → phenotype → Tier 2 evidence-backed dosing guidance), via `pgx_interpreter/evidence.py`'s fetch → validate → stamp → cache adapter against ClinPGx's live guideline API, paired with a hand-verified phenotype/activity-score → recommendation mapping (same "cite the real source" discipline Tier 1 already used). See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's Tier 2 scope and citations.
+**Status:** Phase 6 complete — TPMT, DPYD, and SLCO1B1 now go all the way from VCF to a rendered report (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML report), via `pgx_interpreter/report.py`'s assembly of the 10 report sections Plan §6 specifies. This phase also closed two long-documented interim limitations: TPMT/SLCO1B1's dosage-inferred-phase reasoning and the *3A-style unphased-ambiguity explanation (previously computed but silently dropped) and DPYD's HapB3 disagreement note (previously only inline in the phenotype string) are now all carried on `PGxResult.interpretation_notes` and surfaced in every report. See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and (updated) known limitations.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -52,7 +52,7 @@ Evidence is fetched via a versioned adapter (fetch → validate → stamp with r
 
 ## Repository structure
 
-Current state (Phase 5). The full target layout — `report.py` (Phase 6), `cyp2c19.py` (Phase 8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
+Current state (Phase 6). The full target layout — `cyp2c19.py` (Phase 8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
 
 ```text
 pgx-interpretation-pipeline/
@@ -68,6 +68,7 @@ pgx-interpretation-pipeline/
 │   ├── schema.py
 │   ├── normalize.py
 │   ├── evidence.py             # Phase 5: Tier 2 fetch/validate/stamp/cache adapter + recommend()
+│   ├── report.py               # Phase 6: report assembly, JSON/TSV/HTML, sections 1-10
 │   └── genes/
 │       ├── tpmt.py
 │       ├── dpyd.py
@@ -79,6 +80,7 @@ pgx-interpretation-pipeline/
 │   ├── test_dpyd.py
 │   ├── test_slco1b1.py
 │   ├── test_evidence.py
+│   ├── test_report.py
 │   ├── fixtures/tpmt/          # 7 VCF fixtures
 │   ├── fixtures/dpyd/          # 11 VCF fixtures
 │   ├── fixtures/slco1b1/       # 12 VCF fixtures

@@ -308,3 +308,37 @@ Same day, continued straight through per the user's request ("let's do Phase 5 t
 **Next session should:**
 1. Sync this batch, review diff, commit ("Phase 5: Tier 2 drug-recommendation evidence adapter (fetch/validate/stamp/cache) + hand-verified phenotype→recommendation mapping for TPMT/DPYD/SLCO1B1"), push.
 2. Start Phase 6: report layer — this is where `PGxResult`'s per-result output gets assembled into an actual human-readable report, and where `interpretation_notes` (deferred since Phase 2) is planned to finally land.
+
+---
+
+## 2026-08-17 — Session 8 (Phase 6: report layer)
+
+Picked up straight into Phase 6 per the user's "let's go to Phase 6 then." Session had one interruption — the user's laptop restarted unexpectedly mid-session, right after `pgx_interpreter/report.py` was written but before its test suite existed. Resumed cleanly: all Phase 1-5 work and the new `report.py` were already saved to disk (this environment's outputs folder persists across a client restart), confirmed by re-running the full suite before continuing rather than assuming nothing had changed.
+
+**Closed two real, long-documented interim limitations first**, since Plan §6's report section 8 ("Interpretation notes") is exactly the field they were waiting for:
+- `PGxResult` gained `interpretation_notes: tuple[str, ...] = ()` (additive, same precedent as `alternative_diplotypes`/Phase 5's recommendation fields).
+- Traced the actual code and found the gap was worse than the docs suggested: TPMT/SLCO1B1's dosage-inferred-phase explanation was silently dropped for `SUPPORTED` results, and — not previously documented anywhere — the *3A-style unphased-ambiguity explanation (the actual "cis and trans are equally consistent, cannot be distinguished without phasing information" reasoning) was *also* silently dropped for `AMBIGUOUS` results in both `tpmt.py` and `slco1b1.py`; only the short "(phase unknown -- see alternative_diplotypes)" phenotype-string suffix survived. DPYD's HapB3 disagreement note was already surfaced inline in the phenotype string, just not as a dedicated field.
+- Fix: every `note`/`hapb3_note` local variable each gene module already computes is now also passed into `interpretation_notes` at every `PGxResult(...)` construction site (5 in `dpyd.py`, 1 each in `tpmt.py`/`slco1b1.py`). Deliberately did not touch any existing phenotype-string text -- purely additive, zero behavior change to already-tested output.
+- `docs/GENE_SCOPE.md` updated to mark both previously-interim limitations resolved (struck through, not deleted, with a note pointing at this session).
+
+**Built `pgx_interpreter/report.py`**, implementing Plan §6's 10 report sections (sample/analysis metadata, gene, observed variants, allele/diplotype interpretation, predicted phenotype, gene-drug relationship, guideline source/version for both evidence tiers separately, interpretation notes, limitations, technical provenance) in three output formats: `to_json()`, `to_tsv()`, `to_html()`. PDF explicitly skipped, per the plan's own "PDF is optional."
+
+Design decisions, each stated directly in the module docstring:
+- `build_report()` takes already-computed `PGxResult`s (optionally already run through `evidence.recommend()`); `report.py` never calls a gene function or the evidence adapter itself, and never touches the network or a VCF — same "each layer stays only as capable as it needs to be" principle `evidence.py` established for Phase 5. `sample_id` is inferred when every result agrees, and the function raises rather than silently merging results that don't share one sample_id.
+- `to_tsv()` is a tabular summary only (one row per gene, core fields) -- interpretation notes, limitations, and technical provenance are deliberately excluded as columns since forcing free-text into TSV cells doesn't actually make them more accessible; they're in `to_json()`/`to_html()` only.
+- Section 9 (limitations) and section 10 (technical provenance) use real, sourced text mirrored from `docs/GENE_SCOPE.md`'s "Known limitations" sections and `docs/DATA_SOURCES_AND_LICENSING.md`'s closed licensing audit, respectively -- not placeholder copy. The docstring explicitly acknowledges this as a deliberate content duplication (same pattern already used between `THIRD_PARTY_DATA.md` and `DATA_SOURCES_AND_LICENSING.md`), to be kept in sync by hand.
+- The required "research/educational software, not clinically validated" disclaimer (Plan §6's own explicit requirement) is a module-level constant surfaced in report-level metadata (section 1) in all three formats except TSV (where it doesn't fit the tabular format -- the TSV's own limitation, matching the notes/limitations exclusion above).
+- HTML output is dependency-free (stdlib `html.escape`, inline `<style>`, no external CSS/JS/CDN) -- consistent with this project's minimal-dependency convention holding even for a rendered report, not just the Python package itself.
+
+**Verified before packaging:** `tests/run_tests.py` (PyPI/pytest not available this session) — **94/94 pass** (73 from Phases 1-5 unchanged + 21 new Phase 6 tests in `tests/test_report.py`, covering `build_report()`'s assembly rules, all three renderers, a multi-gene report, both a supported and an ambiguous case, and a case with a real Tier 2 recommendation attached via the Phase 5 evidence fixtures).
+
+`docs/GENE_SCOPE.md`, `README.md` updated for Phase 6 (status line, repository structure, the two resolved limitations).
+
+**Not done yet (deliberately deferred):**
+- Wiring `report.py`/`evidence.recommend()` into an actual CLI/orchestration entry point — still no runnable end-to-end command; that's Phase 9 (`main.nf`).
+- Phase 7 (validation and benchmarking, including the GeT-RM license check) — next per the plan.
+- Root `CLAUDE.md` project-list entry — still not added.
+
+**Next session should:**
+1. Sync this batch, review diff, commit ("Phase 6: report layer (JSON/TSV/HTML, 10 sections) + interpretation_notes field, closing two long-documented interim limitations"), push.
+2. Start Phase 7: validation and benchmarking — unit test coverage review across genotype parsing/allele lookup/diplotype construction/phenotype mapping/unsupported combinations/missing calls/reference alleles/versioned evidence lookup (already largely covered incrementally per-phase; Phase 7 is the place to review that coverage deliberately rather than assume it), plus the GeT-RM license check that's been gated here since Phase 0.

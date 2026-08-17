@@ -253,6 +253,16 @@ def call_tpmt(
         diplotype=diplotype,
         alternative_diplotypes=alternatives,
         phenotype=phenotype,
+        # Phase 6 addition: `note` is already computed above for every path
+        # (dosage-inferred phase, the *3A ambiguity explanation, *2/*3-family
+        # conflict, insufficient-data/unsupported-allele detail) but was
+        # previously only reachable by INSUFFICIENT_DATA/UNSUPPORTED_ALLELE
+        # embedding it inline in the phenotype string -- the SUPPORTED
+        # dosage-inference case and the AMBIGUOUS explanation were silently
+        # dropped (documented limitation, GENE_SCOPE.md). Surfaced here for
+        # every path uniformly; the phenotype string's existing inline text
+        # is left exactly as-is (no behavior change to already-tested output).
+        interpretation_notes=(note,) if note else (),
     )
 
 

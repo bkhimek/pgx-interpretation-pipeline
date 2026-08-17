@@ -224,7 +224,7 @@ def call_dpyd(
             return PGxResult(
                 sample_id=sample_id, gene=GENE, genome_build=genome_build,
                 observed_variants=observed_variants, diplotype=_undetermined_diplotype(),
-                phenotype=phenotype,
+                phenotype=phenotype, interpretation_notes=(note,),
             )
 
     non_reference = {name: (zyg, var) for name, (zyg, var) in loci.items() if zyg in ("het", "hom_alt")}
@@ -244,7 +244,7 @@ def call_dpyd(
         return PGxResult(
             sample_id=sample_id, gene=GENE, genome_build=genome_build,
             observed_variants=observed_variants, diplotype=_undetermined_diplotype(),
-            phenotype=phenotype,
+            phenotype=phenotype, interpretation_notes=(note,),
         )
 
     missing_loci = {name: zyg for name, (zyg, _) in loci.items() if zyg in ("missing", "absent")}
@@ -274,7 +274,7 @@ def call_dpyd(
             return PGxResult(
                 sample_id=sample_id, gene=GENE, genome_build=genome_build,
                 observed_variants=observed_variants, diplotype=_undetermined_diplotype(),
-                phenotype=phenotype,
+                phenotype=phenotype, interpretation_notes=(note,),
             )
         diplotype = Diplotype(_allele_call("*1", ()), _allele_call("*1", ()), PhaseStatus.PHASED)
         activity_score = 2.0
@@ -297,6 +297,7 @@ def call_dpyd(
         return PGxResult(
             sample_id=sample_id, gene=GENE, genome_build=genome_build,
             observed_variants=observed_variants, diplotype=diplotype, phenotype=phenotype,
+            interpretation_notes=(hapb3_note,) if hapb3_note else (),
         )
 
     # Exactly one locus is non-reference -- a real defective-allele call
@@ -327,6 +328,7 @@ def call_dpyd(
     return PGxResult(
         sample_id=sample_id, gene=GENE, genome_build=genome_build,
         observed_variants=observed_variants, diplotype=diplotype, phenotype=phenotype,
+        interpretation_notes=(hapb3_note,) if (name == "HapB3" and hapb3_note) else (),
     )
 
 

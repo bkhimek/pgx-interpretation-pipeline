@@ -78,6 +78,7 @@ def test_tpmt_example_matches_plan_section5_worked_example():
         "recommendation_category": None,
         "recommendation_guideline_source": None,
         "alternative_diplotypes": [],
+        "interpretation_notes": [],
     }
     assert _tpmt_example().to_dict() == expected
 
@@ -134,6 +135,16 @@ def test_recommendation_fields_default_to_none_until_phase5():
     assert as_dict["recommendation_category"] is None
     assert as_dict["recommendation_guideline_source"] is None
     assert result.recommendation.drug is None
+
+
+def test_interpretation_notes_default_to_empty():
+    # Phase 6 addition. A PGxResult built without any notes (the normal
+    # case for a clean, unambiguous call) must report an explicit empty
+    # list, not the field being absent -- same discipline as every other
+    # additive field in this schema.
+    as_dict = _tpmt_example().to_dict()
+    assert as_dict["interpretation_notes"] == []
+    assert _tpmt_example().interpretation_notes == ()
 
 
 def test_missing_second_allele_is_explicit_not_silently_dropped():

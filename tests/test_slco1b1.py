@@ -98,6 +98,10 @@ def test_dosage_inferred_star15_star37():
     assert d["confidence"] == "supported"
     assert d["phenotype"] == "Decreased function"
     assert d["alternative_diplotypes"] == []
+    # Phase 6: dosage-inference reasoning, same interim-limitation fix as
+    # TPMT's equivalent case (GENE_SCOPE.md).
+    assert len(d["interpretation_notes"]) == 1
+    assert "phase inferred from genotype dosage" in d["interpretation_notes"][0]
 
 
 def test_dosage_inferred_star15_star5():

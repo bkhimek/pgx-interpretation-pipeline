@@ -194,6 +194,17 @@ class PGxResult:
     # breaking change to Phase 1's shape -- exactly the kind of schema
     # evolution Architecture Review 1 (Plan §5) expects to review.
     alternative_diplotypes: tuple[Diplotype, ...] = ()
+    # Phase 6 addition (Plan §5 Phase 6, report section 8 "Interpretation
+    # notes"): every gene module has computed an explanatory note like this
+    # internally since Phase 2 (TPMT/SLCO1B1's dosage-inferred-phase
+    # reasoning, TPMT/SLCO1B1's unphased-ambiguity explanation, DPYD's HapB3
+    # exonic/intronic disagreement) -- some were surfaced only by being
+    # embedded inline in the `phenotype` string, others (TPMT/SLCO1B1's
+    # dosage-inference note, the ambiguity explanation) were computed and
+    # then silently dropped, a real, already-documented interim limitation
+    # (see GENE_SCOPE.md, HANDOFF.md) waiting specifically for this field to
+    # exist. Additive; empty whenever a gene module has nothing to report.
+    interpretation_notes: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         allele_1 = self.diplotype.allele_1
@@ -238,4 +249,5 @@ class PGxResult:
             "recommendation_category": self.recommendation.recommendation_category,
             "recommendation_guideline_source": self.recommendation.guideline_source,
             "alternative_diplotypes": [str(d) for d in self.alternative_diplotypes],
+            "interpretation_notes": list(self.interpretation_notes),
         }
