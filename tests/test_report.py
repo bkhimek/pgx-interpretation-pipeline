@@ -235,6 +235,15 @@ def test_json_report_gene_section_matches_supported_cyp2c19_result():
     assert len(gene["interpretation_notes"]) == 1
 
 
+def test_json_report_includes_cyp2c19_gene_drug_relationship_when_recommendation_attached():
+    result = recommend(_cyp2c19("normal_function.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR)
+    rep = report.build_report((result,))
+    payload = json.loads(report.to_json(rep))
+    gdr = payload["genes"][0]["gene_drug_relationship"]
+    assert gdr["drug"] == "clopidogrel"
+    assert "standard dose (75 mg/day)" in gdr["recommendation_category"]
+
+
 # --- to_tsv(): tabular summary only ---
 
 

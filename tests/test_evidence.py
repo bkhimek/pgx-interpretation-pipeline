@@ -30,6 +30,7 @@ tests/run_tests.py (DEVELOPMENT_WORKFLOW.md item 2).
 from pathlib import Path
 
 from pgx_interpreter.evidence import EvidenceFetchError, fetch_guideline, recommend
+from pgx_interpreter.genes.cyp2c19 import call_cyp2c19
 from pgx_interpreter.genes.dpyd import call_dpyd
 from pgx_interpreter.genes.slco1b1 import call_slco1b1
 from pgx_interpreter.genes.tpmt import call_tpmt
@@ -41,6 +42,7 @@ FIXTURES_EVIDENCE_DIR = Path(__file__).resolve().parent / "fixtures" / "evidence
 FIXTURES_TPMT_DIR = Path(__file__).resolve().parent / "fixtures" / "tpmt"
 FIXTURES_DPYD_DIR = Path(__file__).resolve().parent / "fixtures" / "dpyd"
 FIXTURES_SLCO1B1_DIR = Path(__file__).resolve().parent / "fixtures" / "slco1b1"
+FIXTURES_CYP2C19_DIR = Path(__file__).resolve().parent / "fixtures" / "cyp2c19"
 
 # A cache_dir that provably has nothing in it and cannot be written to by a
 # real fetch attempt reaching the network -- used to prove that ambiguous /
@@ -61,6 +63,11 @@ def _dpyd(fixture_name: str):
 def _slco1b1(fixture_name: str):
     variants = parse_vcf(FIXTURES_SLCO1B1_DIR / fixture_name, GenomeBuild.GRCH38)
     return call_slco1b1(variants, sample_id="TEST", genome_build=GenomeBuild.GRCH38)
+
+
+def _cyp2c19(fixture_name: str):
+    variants = parse_vcf(FIXTURES_CYP2C19_DIR / fixture_name, GenomeBuild.GRCH38)
+    return call_cyp2c19(variants, sample_id="TEST", genome_build=GenomeBuild.GRCH38)
 
 
 # --- fetch_guideline: fetch -> validate -> stamp -> cache adapter itself ---
@@ -111,6 +118,14 @@ def test_fetch_guideline_rejects_malformed_cache_record():
             assert False, "expected EvidenceFetchError for a cache record missing required fields"
         except EvidenceFetchError as exc:
             assert "missing required field" in str(exc)
+
+
+def test_fetch_guideline_reads_cyp2c19_fixture_from_cache_without_network():
+    snapshot = fetch_guideline("PA166104948", cache_dir=FIXTURES_EVIDENCE_DIR)
+    assert snapshot.guideline_id == "PA166104948"
+    assert "CYP2C19" in snapshot.related_genes
+    assert "clopidogrel" in snapshot.related_chemicals
+    assert snapshot.retrieved_at == "2026-08-18T00:00:00+00:00"
 
 
 def test_fetch_guideline_uses_cache_on_repeat_calls_without_force_refresh():
@@ -274,6 +289,59 @@ def test_recommend_slco1b1_poor_function():
 def test_recommend_does_not_attach_or_fetch_for_slco1b1_unphased_ambiguous():
     before = _slco1b1("unphased_ambiguous.vcf")
     assert before.phenotype.confidence.value == "ambiguous"
+    after = recommend(before, cache_dir=_UNREACHABLE_CACHE_DIR)
+    assert after is before
+    assert after.recommendation.drug is None
+
+
+# --- recommend(): CYP2C19 + clopidogrel (Table 1, ACS/PCI column) ---
+
+
+def test_recommend_cyp2c19_normal_metabolizer_standard_dose():
+    result = recommend(_cyp2c19("normal_function.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR)
+    d = result.to_dict()
+    assert d["recommended_drug"] == "clopidogrel"
+    assert "standard dose (75 mg/day)" in d["recommendation_category"]
+    assert d["recommendation_guideline_source"] == "Annotation of CPIC Guideline for clopidogrel and CYP2C19"
+    assert d["recommendation_evidence_source"] == "CPIC via ClinPGx guidelineAnnotation PA166104948"
+    assert d["recommendation_evidence_version"] == "2026-08-18"
+
+
+def test_recommend_cyp2c19_ultrarapid_and_rapid_also_get_standard_dose():
+    # *17/*17 and *1/*17 both map to the same ACS/PCI-column text as Normal
+    # -- confirmed directly from the real guideline table, not assumed.
+    ultrarapid = recommend(_cyp2c19("hom_alt_star17.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR).to_dict()
+    rapid = recommend(_cyp2c19("het_star17.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR).to_dict()
+    assert "standard dose (75 mg/day)" in ultrarapid["recommendation_category"]
+    assert "standard dose (75 mg/day)" in rapid["recommendation_category"]
+
+
+def test_recommend_cyp2c19_intermediate_metabolizer_avoids_standard_dose():
+    result = recommend(_cyp2c19("het_star2.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR)
+    d = result.to_dict()
+    assert d["phenotype"] == "Intermediate Metabolizer"
+    assert "Avoid standard dose (75 mg) clopidogrel" in d["recommendation_category"]
+    assert "prasugrel or ticagrelor" in d["recommendation_category"]
+
+
+def test_recommend_cyp2c19_poor_metabolizer_avoids_clopidogrel_entirely():
+    result = recommend(_cyp2c19("hom_alt_star2.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR)
+    d = result.to_dict()
+    assert d["phenotype"] == "Poor Metabolizer"
+    assert "Avoid clopidogrel if possible" in d["recommendation_category"]
+
+
+def test_recommend_does_not_attach_or_fetch_for_cyp2c19_insufficient_data():
+    before = _cyp2c19("missing_genotype.vcf")
+    assert before.phenotype.confidence.value == "insufficient_data"
+    after = recommend(before, cache_dir=_UNREACHABLE_CACHE_DIR)
+    assert after is before
+    assert after.recommendation.drug is None
+
+
+def test_recommend_does_not_attach_or_fetch_for_cyp2c19_unsupported_allele():
+    before = _cyp2c19("contradiction_dosage_exceeds_two.vcf")
+    assert before.phenotype.confidence.value == "unsupported_allele"
     after = recommend(before, cache_dir=_UNREACHABLE_CACHE_DIR)
     assert after is before
     assert after.recommendation.drug is None

@@ -432,3 +432,28 @@ Picked up on the user's "let's go to Phase 8." Per Architecture Review 1's own c
 **Next session should:**
 1. Sync this batch, review diff, commit ("Phase 8: add CYP2C19 — three independent single-SNP loci, compound-diplotype model, v0.2 with four supported genes"), push.
 2. Once the user gives the go-ahead: either a Tier 2 evidence phase for CYP2C19+clopidogrel (mirroring Phase 5), a GeT-RM cross-validation pass for CYP2C19 (mirroring Phase 7), or Phase 9 (Nextflow orchestration, `main.nf`) per the plan's own sequencing — all three are legitimate next steps and the plan doesn't mandate a strict order between them now that the four-gene v0.2 milestone (Plan §5) is complete.
+
+## 2026-08-18 — Session 11 (CYP2C19 Tier 2 evidence: clopidogrel)
+
+Picked up on the user's "let's move to the next Phase" — asked which of the three options from the prior session's notes (Tier 2 evidence, GeT-RM validation, or Phase 9 orchestration) to do next, since the plan genuinely doesn't mandate an order between them at this milestone. Recommended Tier 2 evidence: CYP2C19 was the one gene whose reports would always show a null `gene_drug_relationship`, a visible asymmetry against the other three genes in the same report, and the smallest, best-precedented piece of remaining work (mirrors Phase 5 exactly). User agreed.
+
+**Fetched the real guideline, not assumed:** ClinPGx guideline `PA166104948` ("Annotation of CPIC Guideline for clopidogrel and CYP2C19"), fetched live via this session's own network path (the same `api.clinpgx.org` endpoint `evidence.py`'s `fetch_guideline()` targets, reachable through this session's web-fetch tooling even though direct in-sandbox `urllib`/`curl` calls to that host are blocked by the sandbox's network allowlist — the same asymmetry documented back in Phase 5). Full real payload captured and committed as `tests/fixtures/evidence/PA166104948.json`, dated 2026-08-18, same shape as the three existing TPMT/DPYD/SLCO1B1 fixtures.
+
+**A real scoping decision, surfaced rather than glossed over:** the actual 2022 CPIC guideline (Lee et al., Table 1 and Table 2) publishes *two* parallel recommendation tables -- cardiovascular/ACS-PCI and neurovascular/stroke-TIA -- with different text and classification strength per phenotype, plus a third "non-ACS, non-PCI cardiovascular" column inside Table 1 itself. `RecommendationResult` has one recommendation field, not an indication-keyed structure, so this session implemented only Table 1's ACS/PCI column (the single most common, best-evidenced real-world use case for CYP2C19-guided clopidogrel dosing) and documented the neurovascular table and the extra column as real, out-of-scope limitations in both `evidence.py`'s module docstring and `docs/GENE_SCOPE.md` -- not silently dropped nuance.
+
+**Implementation:** `_CYP2C19_RECOMMENDATIONS` dict (keyed by this module's five producible phenotype strings, all mapping cleanly to Table 1's ACS/PCI column, all rated "Strong") and a `gene == "CYP2C19"` branch in `_entry_for()`, following the exact TPMT/DPYD/SLCO1B1 pattern already in `pgx_interpreter/evidence.py` -- no new adapter logic needed, `fetch_guideline()`'s fetch/validate/stamp/cache machinery is already fully gene-agnostic.
+
+**Tests:** `tests/test_evidence.py` extended with a `fetch_guideline` cache-read test for the new fixture and six `recommend()` tests covering all five phenotype tiers (Ultrarapid/Rapid/Normal all get the same standard-dose text; Intermediate and Poor each get their own avoid/alternative-agent text) plus both no-recommendation guardrail cases this gene can actually produce (`insufficient_data` and `unsupported_allele` -- CYP2C19's model never produces `ambiguous`, unlike TPMT/SLCO1B1, so the guardrail test set is shaped differently on purpose, not by oversight). `tests/test_report.py` extended with one new test confirming the `gene_drug_relationship` JSON section populates correctly for a real CYP2C19+clopidogrel recommendation.
+
+**Verified before packaging:** both runners agree -- `PYTHONPATH=. python3 tests/run_tests.py` and `PYTHONPATH=. pytest -q` each report **150/150 pass, 0 skipped** (142 from Phase 8 unchanged + 7 new `test_evidence.py` tests + 1 new `test_report.py` test).
+
+`docs/GENE_SCOPE.md`'s CYP2C19 section given a new Tier 2 paragraph (citation, the Table 1/Table 2 scoping decision, the five-tier mapping). `README.md`'s status line rewritten to state plainly that all four genes now go all the way to a drug recommendation, and the `fixtures/evidence/` repository-structure comment updated from "3" to "4" payloads.
+
+**Not done yet (deliberately deferred, not an oversight):**
+- The neurovascular (Table 2) clopidogrel recommendation table and Table 1's "non-ACS, non-PCI cardiovascular" column remain unimplemented -- a real, documented scope boundary of the single-recommendation-field design, not something this session ran out of time for.
+- CYP2C19 GeT-RM cross-validation (Phase-7-style) and Phase 9 (Nextflow orchestration) are both still open, per the prior session's own notes.
+- Root `CLAUDE.md` project-list entry -- still not added (carried forward from every prior session's notes).
+
+**Next session should:**
+1. Sync this batch, review diff, commit ("Add CYP2C19 Tier 2 evidence: clopidogrel, CPIC 2022 Table 1 (cardiovascular/ACS-PCI column)"), push.
+2. Once the user gives the go-ahead: CYP2C19 GeT-RM cross-validation (mirroring Phase 7) or Phase 9 (Nextflow orchestration, `main.nf`) are the two remaining legitimate next steps from the prior session's list, now that Tier 2 evidence is done for all four genes.

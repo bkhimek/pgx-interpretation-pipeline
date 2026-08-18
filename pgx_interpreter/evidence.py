@@ -155,6 +155,40 @@ already documented in `docs/GENE_SCOPE.md`):
   - Poor function: "Prescribe an alternative statin depending on the
     desired potency ..." (Strong; no simvastatin dose-cap fallback listed
     for this tier -- CPIC's table gives none, so none is invented here.)
+
+**CYP2C19 + clopidogrel** (guideline `PA166104948`) -- CPIC (2022 Update,
+"Table 1: Antiplatelet therapy recommendations based on CYP2C19 phenotype
+when considering clopidogrel for cardiovascular indications"), fetched
+directly from ClinPGx's live `guidelineAnnotation` JSON, 2026-08-18.
+
+**A real scoping decision, stated plainly rather than glossed over:** the
+2022 guideline actually publishes *two* parallel recommendation tables --
+Table 1 for cardiovascular indications (ACS/PCI) and Table 2 for
+neurovascular indications (stroke/TIA) -- with different recommendation
+text and classification strength for the same phenotype depending on which
+table applies, plus a third "non-ACS, non-PCI cardiovascular" classification
+column within Table 1 itself. `RecommendationResult` has one
+`recommendation_category` field, not an indication-keyed structure, so this
+module implements **only Table 1's ACS/PCI column** -- the single most
+common, best-evidenced, most-cited real-world use case for CYP2C19-guided
+clopidogrel dosing (post-PCI antiplatelet selection). The neurovascular
+table and the non-ACS/non-PCI cardiovascular column are real, out-of-scope
+limitations, not silently dropped nuance -- documented here and in
+`docs/GENE_SCOPE.md`.
+
+This module's five producible phenotype categories (no "likely"
+intermediate/poor tiers, since those require decreased-function alleles
+like `*9`/`*10` that `genes/cyp2c19.py` doesn't implement -- the exact same
+scoping pattern as SLCO1B1's "Possible decreased function" gap) all map
+directly to Table 1's ACS/PCI column, all rated "Strong":
+
+  - Ultrarapid Metabolizer, Rapid Metabolizer, Normal Metabolizer: "If
+    considering clopidogrel, use at standard dose (75 mg/day)." (Strong)
+  - Intermediate Metabolizer: "Avoid standard dose (75 mg) clopidogrel if
+    possible. Use prasugrel or ticagrelor at standard dose if no
+    contraindication." (Strong)
+  - Poor Metabolizer: "Avoid clopidogrel if possible. Use prasugrel or
+    ticagrelor at standard dose if no contraindication." (Strong)
 """
 from __future__ import annotations
 
@@ -414,6 +448,47 @@ _SLCO1B1_RECOMMENDATIONS: dict[str, _RecommendationEntry] = {
     ),
 }
 
+# --- CYP2C19 + clopidogrel, Table 1 (cardiovascular/ACS-PCI column only --
+# see module docstring for the real, documented scoping decision) ---
+_CYP2C19_RECOMMENDATIONS: dict[str, _RecommendationEntry] = {
+    "Ultrarapid Metabolizer": _RecommendationEntry(
+        drug="clopidogrel",
+        recommendation="If considering clopidogrel, use at standard dose (75 mg/day).",
+        classification="Strong",
+        guideline_id="PA166104948",
+    ),
+    "Rapid Metabolizer": _RecommendationEntry(
+        drug="clopidogrel",
+        recommendation="If considering clopidogrel, use at standard dose (75 mg/day).",
+        classification="Strong",
+        guideline_id="PA166104948",
+    ),
+    "Normal Metabolizer": _RecommendationEntry(
+        drug="clopidogrel",
+        recommendation="If considering clopidogrel, use at standard dose (75 mg/day).",
+        classification="Strong",
+        guideline_id="PA166104948",
+    ),
+    "Intermediate Metabolizer": _RecommendationEntry(
+        drug="clopidogrel",
+        recommendation=(
+            "Avoid standard dose (75 mg) clopidogrel if possible. Use prasugrel or ticagrelor at "
+            "standard dose if no contraindication."
+        ),
+        classification="Strong",
+        guideline_id="PA166104948",
+    ),
+    "Poor Metabolizer": _RecommendationEntry(
+        drug="clopidogrel",
+        recommendation=(
+            "Avoid clopidogrel if possible. Use prasugrel or ticagrelor at standard dose if no "
+            "contraindication."
+        ),
+        classification="Strong",
+        guideline_id="PA166104948",
+    ),
+}
+
 
 def _entry_for(result: PGxResult) -> Optional[_RecommendationEntry]:
     """Looks up the hand-verified entry for this result's gene + exact
@@ -436,12 +511,15 @@ def _entry_for(result: PGxResult) -> Optional[_RecommendationEntry]:
     if result.gene == "SLCO1B1":
         return _SLCO1B1_RECOMMENDATIONS.get(result.phenotype.phenotype)
 
+    if result.gene == "CYP2C19":
+        return _CYP2C19_RECOMMENDATIONS.get(result.phenotype.phenotype)
+
     return None
 
 
 def recommend(result: PGxResult, *, cache_dir: Optional[Path] = None) -> PGxResult:
     """Layer 4 step (Plan §5 Phase 5): given an already-computed `PGxResult`
-    from `call_tpmt`/`call_dpyd`/`call_slco1b1` (Layers 1-3), attach a drug
+    from `call_tpmt`/`call_dpyd`/`call_slco1b1`/`call_cyp2c19` (Layers 1-3), attach a drug
     recommendation if -- and only if -- this module has a hand-verified
     entry for the result's exact gene + phenotype (or, for DPYD, activity
     score). Returns the *same* result unchanged (recommendation stays at

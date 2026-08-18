@@ -1,0 +1,121 @@
+{
+  "guideline_id": "PA166104948",
+  "retrieved_at": "2026-08-18T00:00:00+00:00",
+  "payload": {
+    "data": {
+      "objCls": "Guideline Annotation",
+      "id": "PA166104948",
+      "name": "Annotation of CPIC Guideline for clopidogrel and CYP2C19",
+      "alternateDrugAvailable": true,
+      "cancerGenome": false,
+      "crossReferences": [],
+      "descriptiveVideoId": "qxzsy-2KF3s",
+      "dosingInformation": false,
+      "hasTestingInfo": false,
+      "history": [
+        {
+          "id": 1183699770,
+          "date": "2011-06-22T00:00:00-07:00",
+          "type": "Create",
+          "version": 0
+        },
+        {
+          "id": 1183699757,
+          "date": "2013-05-22T00:00:00-07:00",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1451654220,
+          "date": "2022-01-19T09:16:11.163-08:00",
+          "description": "2022 guideline update posted",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1451656020,
+          "date": "2022-01-20T13:39:45.171-08:00",
+          "description": "Added updated video",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1452137680,
+          "date": "2023-06-22T21:06:54.899-07:00",
+          "description": "Updated supplemental table links",
+          "type": "Update",
+          "version": 0
+        }
+      ],
+      "literature": [
+        {
+          "id": 15127862,
+          "title": "Clinical Pharmacogenetics Implementation Consortium Guideline for CYP2C19 Genotype and Clopidogrel Therapy: 2022 Update.",
+          "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9287492",
+          "crossReferences": [
+            {
+              "id": 1451837619,
+              "resource": "PubMed Central",
+              "resourceId": "PMC9287492",
+              "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9287492"
+            },
+            {
+              "id": 1451651460,
+              "resource": "PubMed",
+              "resourceId": "35034351",
+              "_url": "https://www.ncbi.nlm.nih.gov/pubmed/35034351"
+            },
+            {
+              "id": 1451651461,
+              "resource": "DOI",
+              "resourceId": "10.1002/cpt.2526",
+              "_url": "http://dx.doi.org/10.1002%2Fcpt.2526"
+            }
+          ],
+          "objCls": "Literature",
+          "pubDate": "2022-11-01T00:00:00-07:00",
+          "terms": [
+            {
+              "id": 1454108620,
+              "resource": "ClinPGx Tags",
+              "term": "CPIC",
+              "termId": "pgkbTags:1454108620"
+            },
+            {
+              "id": 1451577480,
+              "resource": "PGx Paper Types",
+              "term": "Implementation",
+              "termId": "pgxPaperTypes:1451577480"
+            }
+          ],
+          "type": "Literature"
+        }
+      ],
+      "otherPrescribingGuidance": false,
+      "pediatric": true,
+      "recommendation": true,
+      "relatedAlleles": [],
+      "relatedChemicals": [
+        {
+          "objCls": "Chemical",
+          "id": "PA449053",
+          "name": "clopidogrel"
+        }
+      ],
+      "relatedGenes": [
+        {
+          "objCls": "Gene",
+          "id": "PA124",
+          "symbol": "CYP2C19",
+          "name": "cytochrome P450 family 2 subfamily C member 19"
+        }
+      ],
+      "source": "CPIC",
+      "summaryMarkdown": {
+        "id": 1447981866,
+        "html": "<p>The CPIC Dosing Guideline for clopidogrel recommends an alternative antiplatelet therapy for CYP2C19 poor or intermediate metabolizers (cardiovascular indications: prasugrel or ticagrelor if no contraindication; neurovascular indications: alternative P2Y12 inhibitor if clinically indicated and no contraindication.)</p>\n"
+      }
+    },
+    "status": "success"
+  }
+}
