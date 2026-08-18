@@ -13,34 +13,46 @@ for the full license check this project's Phase 0 gated on before Phase 7.
 
 Scope discipline (the plan's own explicit requirement): every sample below
 was hand-selected because its GeT-RM consensus diplotype/genotype is
-composed ENTIRELY of star alleles/variants this project's TPMT and DPYD
-modules actually define (genes/tpmt.py's four-allele scope; genes/dpyd.py's
-four-locus scope). GeT-RM samples carrying alleles outside that scope
-(TPMT *6/*8/*12/*16/*21/*24/*32/*33/*40/*46; DPYD's older 2016-study *4/*9
-panel, which does not correspond to this project's CPIC-actionable variant
-set) are correctly NOT claimed as benchmarked here -- this project's own
-modules would report `unsupported_allele`/fall outside their documented
-scope for those, and asserting a match against them would not be a
-meaningful test.
+composed ENTIRELY of star alleles/variants this project's TPMT, DPYD, and
+CYP2C19 modules actually define (genes/tpmt.py's four-allele scope;
+genes/dpyd.py's four-locus scope; genes/cyp2c19.py's four-allele scope).
+GeT-RM samples carrying alleles outside that scope (TPMT
+*6/*8/*12/*16/*21/*24/*32/*33/*40/*46; DPYD's older 2016-study *4/*9 panel,
+which does not correspond to this project's CPIC-actionable variant set;
+CYP2C19's *4/*8/*10) are correctly NOT claimed as benchmarked here -- this
+project's own modules would report `unsupported_allele`/fall outside their
+documented scope for those, and asserting a match against them would not be
+a meaningful test.
 
-Fixture provenance: each VCF under tests/fixtures/getrm/{tpmt,dpyd}/ is
-named by its Coriell sample ID and documents its own GeT-RM source
+Fixture provenance: each VCF under tests/fixtures/getrm/{tpmt,dpyd,cyp2c19}/
+is named by its Coriell sample ID and documents its own GeT-RM source
 (publication, table, retrieval method) in its header comments. Genotypes
 were reconstructed from this project's own dbSNP-confirmed defining-variant
-coordinates (already established in genes/tpmt.py and genes/dpyd.py) paired
-with the real GeT-RM consensus call for each sample -- not redistributed
-verbatim from CDC/Coriell's own data tables/tool output.
+coordinates (already established in genes/tpmt.py, genes/dpyd.py, and
+genes/cyp2c19.py) paired with the real GeT-RM consensus call for each
+sample -- not redistributed verbatim from CDC/Coriell's own data
+tables/tool output.
 
-SAMPLE_ID note: `call_tpmt`/`call_dpyd` take a caller-supplied sample_id
-positional argument (not read from the VCF); each test below passes the
-fixture's own Coriell ID so a result's `sample_id` field is self-documenting
-without needing to cross-reference the file name.
+A note specific to the CYP2C19 samples: CDC's own 107-sample table
+(Pratt et al. 2010) reports some consensus calls as e.g. "*1/*1 (*1/*17)"
+-- the parenthetical is the fuller diplotype once the subset of methods
+that specifically test the *17 promoter variant are included. This project
+uses the fuller, more complete call (i.e. the parenthetical, when present)
+as the real consensus genotype, per the same "use the most complete
+testing available, don't discard information" principle used everywhere
+else in this project.
+
+SAMPLE_ID note: `call_tpmt`/`call_dpyd`/`call_cyp2c19` take a
+caller-supplied sample_id positional argument (not read from the VCF); each
+test below passes the fixture's own Coriell ID so a result's `sample_id`
+field is self-documenting without needing to cross-reference the file name.
 
 Plain `assert` statements only -- must run identically under pytest and
 tests/run_tests.py (DEVELOPMENT_WORKFLOW.md item 2).
 """
 from pathlib import Path
 
+from pgx_interpreter.genes.cyp2c19 import call_cyp2c19
 from pgx_interpreter.genes.dpyd import call_dpyd
 from pgx_interpreter.genes.tpmt import call_tpmt
 from pgx_interpreter.models import GenomeBuild
@@ -48,6 +60,7 @@ from pgx_interpreter.normalize import parse_vcf
 
 TPMT_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "tpmt"
 DPYD_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "dpyd"
+CYP2C19_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "cyp2c19"
 
 
 def _call_tpmt(coriell_id: str):
@@ -58,6 +71,11 @@ def _call_tpmt(coriell_id: str):
 def _call_dpyd(coriell_id: str):
     variants = parse_vcf(DPYD_DIR / f"{coriell_id}.vcf", GenomeBuild.GRCH38)
     return call_dpyd(variants, sample_id=coriell_id, genome_build=GenomeBuild.GRCH38)
+
+
+def _call_cyp2c19(coriell_id: str):
+    variants = parse_vcf(CYP2C19_DIR / f"{coriell_id}.vcf", GenomeBuild.GRCH38)
+    return call_cyp2c19(variants, sample_id=coriell_id, genome_build=GenomeBuild.GRCH38)
 
 
 # --- TPMT: 6 GeT-RM samples (Pratt et al. 2022, J Mol Diagn 24:1079-1088) ---
@@ -181,3 +199,79 @@ def test_getrm_HG00118_real_multilocus_sample_correctly_declines_to_guess():
     assert d["confidence"] == "unsupported_allele"
     assert "D949V" in d["interpretation_notes"][0]
     assert "HapB3" in d["interpretation_notes"][0]
+
+
+# --- CYP2C19: 8 GeT-RM samples (Pratt et al. 2010, J Mol Diagn 12:835-846) ---
+
+
+def test_getrm_GM12244_matches_consensus_star1_star1():
+    d = _call_cyp2c19("GM12244").to_dict()
+    assert d["diplotype"] == "*1/*1"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Normal Metabolizer"
+
+
+def test_getrm_GM12273_matches_consensus_star1_star2():
+    d = _call_cyp2c19("GM12273").to_dict()
+    assert d["diplotype"] == "*1/*2"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Intermediate Metabolizer"
+
+
+def test_getrm_GM17052_matches_consensus_star1_star3():
+    d = _call_cyp2c19("GM17052").to_dict()
+    assert d["diplotype"] == "*1/*3"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Intermediate Metabolizer"
+
+
+def test_getrm_GM09301_matches_consensus_star1_star17():
+    d = _call_cyp2c19("GM09301").to_dict()
+    assert d["diplotype"] == "*1/*17"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Rapid Metabolizer"
+
+
+def test_getrm_GM17248_matches_consensus_star17_star17():
+    d = _call_cyp2c19("GM17248").to_dict()
+    assert d["diplotype"] == "*17/*17"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Ultrarapid Metabolizer"
+
+
+def test_getrm_GM16689_matches_consensus_star2_star2():
+    d = _call_cyp2c19("GM16689").to_dict()
+    assert d["diplotype"] == "*2/*2"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Poor Metabolizer"
+
+
+def test_getrm_GM16688_real_compound_star2_star3_matches_consensus():
+    # A real GeT-RM sample carrying both no-function alleles at once. The
+    # lab consensus reports this as a direct *2/*3 diplotype, not a phasing
+    # caveat -- independent, real-world confirmation of the reasoning in
+    # genes/cyp2c19.py's module docstring for why this case is resolved
+    # directly rather than declined.
+    d = _call_cyp2c19("GM16688").to_dict()
+    assert d["diplotype"] == "*2/*3"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Poor Metabolizer"
+
+
+def test_getrm_GM17203_real_compound_star2_star17_matches_consensus():
+    # THE key real-world validation case for this gene: a real GeT-RM
+    # sample carrying the *2 no-function variant and the *17
+    # increased-function variant simultaneously. genes/cyp2c19.py's module
+    # docstring argues from population-genetics and nomenclature evidence
+    # that this exact combination should be resolved directly as a
+    # compound diplotype rather than declined the way DPYD declines its
+    # equivalent situation -- this real lab consensus reporting it as a
+    # direct, unflagged *2/*17 diplotype (not an unresolved/ambiguous call)
+    # is independent, real-world confirmation of that reasoning, not just a
+    # synthetic unit-test construction.
+    d = _call_cyp2c19("GM17203").to_dict()
+    assert d["diplotype"] == "*2/*17"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Intermediate Metabolizer"
+    assert len(d["interpretation_notes"]) == 1
+    assert "compound diplotype" in d["interpretation_notes"][0]

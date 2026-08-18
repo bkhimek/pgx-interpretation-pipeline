@@ -1,0 +1,21 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr10>
+# GeT-RM reference material, Coriell ID GM12244. GeT-RM consensus diplotype:
+# *1/*1 (tested with 5 methods including 2 that specifically test the *17
+# promoter variant -- Roche AmpliChip, AutoGenomics INFINITI, Luminex xTAG,
+# a lab-developed RFLP assay, and a lab-developed TaqMan assay -- with no
+# *17 alternate reported, i.e. a confirmed clean *1/*1, not an untested
+# locus). Source: Pratt VM, Zehnbauer B, Wilson JA, Baak R, Babic N,
+# Bettinotti M, et al., "Characterization of 107 genomic DNA reference
+# materials for CYP2D6, CYP2C19, CYP2C9, VKORC1 and UGT1A1: A GeT-RM and
+# Association for Molecular Pathology collaborative project." J Mol Diagn
+# 2010;12:835-846 (PMID 20889555), as reproduced in CDC's public-domain data
+# table (https://www.cdc.gov/lab-quality/media/pdfs/2024/08/CYP2C19_GeneConsensus.pdf,
+# retrieved 2026-08-18). Genotype below constructed from this project's own
+# dbSNP-confirmed defining-variant coordinates (genes/cyp2c19.py), not
+# redistributed from GeT-RM/Coriell/CDC directly.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr10	94761900	rs12248560	C	T	99	PASS	.	GT	0/0
+chr10	94780653	rs4986893	G	A	99	PASS	.	GT	0/0
+chr10	94781859	rs4244285	G	A	99	PASS	.	GT	0/0

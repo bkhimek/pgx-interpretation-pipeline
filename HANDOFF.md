@@ -457,3 +457,32 @@ Picked up on the user's "let's move to the next Phase" — asked which of the th
 **Next session should:**
 1. Sync this batch, review diff, commit ("Add CYP2C19 Tier 2 evidence: clopidogrel, CPIC 2022 Table 1 (cardiovascular/ACS-PCI column)"), push.
 2. Once the user gives the go-ahead: CYP2C19 GeT-RM cross-validation (mirroring Phase 7) or Phase 9 (Nextflow orchestration, `main.nf`) are the two remaining legitimate next steps from the prior session's list, now that Tier 2 evidence is done for all four genes.
+
+## 2026-08-18 — Session 12 (CYP2C19 GeT-RM validation)
+
+Picked up on the user's "let's do CYP2C19 GeT-RM validation" — the other remaining item from the prior session's list, alongside Phase 9 orchestration.
+
+**Found a better data source than Phase 7 used for DPYD:** rather than the Coriell "GeT-RM PGx Search" tool (documented in Phase 7 as flaky, and the reason SLCO1B1 never got cross-validated), found CDC's own direct per-gene consensus PDF for CYP2C19 (`CYP2C19_GeneConsensus.pdf`, linked from `cdc.gov/lab-quality/php/get-rm/reference-materials.html`), from the same underlying 2010 study (Pratt et al., 107 genomic DNA reference materials, PMID 20889555) TPMT's Phase 7 table also drew from. Following TPMT's own precedent (a direct CDC PDF table) rather than DPYD's (the flaky search tool) turned out to be the more reliable route here too.
+
+**Sourced 8 real samples, hand-selected for in-scope genotypes only**, per the plan's own "don't claim a locus is benchmarked unless the truth set supports it" rule: `*1/*1` (GM12244), `*1/*2` (GM12273), `*1/*3` (GM17052), `*1/*17` (GM09301), `*17/*17` (GM17248), `*2/*2` (GM16689), and two real compound heterozygotes -- `*2/*3` (GM16688) and, most importantly, `*2/*17` (GM17203). Samples using out-of-scope alleles (`*4`, `*8`, `*10`) visible in CDC's table were correctly excluded.
+
+**A retrieval-format wrinkle, handled explicitly:** CDC's table reports some consensus calls as e.g. `*1/*1 (*1/*17)` -- the base call from assays that don't test the `*17` promoter variant, with the fuller consensus (once methods that do test `*17` are included) in parentheses. Used the fuller, parenthetical call as the real consensus genotype throughout, matching this project's existing "use the most complete testing available" principle.
+
+**GM17203 is the headline result, not just another data point.** `genes/cyp2c19.py`'s own module docstring makes a specific, falsifiable claim: that a real `*2`+`*17` double-heterozygote should resolve directly to a compound diplotype rather than requiring phasing, unlike DPYD's structurally similar `*2A`+`*13` situation. GM17203 is exactly this genotype in real reference material, and the real four-platform lab consensus reports it as a direct, unflagged `*2/*17` call -- independent, real-world confirmation of the module's central architectural reasoning, the same category of validation HG00118 provided for DPYD's opposite design choice in Phase 7.
+
+**Implementation:** 8 new VCF fixtures under `tests/fixtures/getrm/cyp2c19/`, each with header comments citing the source and (where relevant) noting the parenthetical-consensus resolution. `tests/test_getrm_validation.py` extended with a `_call_cyp2c19()` helper and 8 new tests, plus its module docstring's scope-discipline and fixture-provenance sections updated to mention CYP2C19 alongside TPMT/DPYD.
+
+**Result: all 8 samples matched exactly.** No ambiguous, insufficient-data, or unsupported-allele cases arose -- every sample selected had a real consensus genotype composed entirely of this module's four in-scope alleles, so a clean match was the correctly expected outcome, not a coincidence.
+
+**Verified before packaging:** both runners agree -- `PYTHONPATH=. python3 tests/run_tests.py` and `PYTHONPATH=. pytest -q` each report **158/158 pass, 0 skipped** (150 from the Tier 2 evidence session unchanged + 8 new `test_getrm_validation.py` tests).
+
+`docs/VALIDATION.md` given a new "CYP2C19 (added in a later session, after Phase 8)" subsection under Section 3, plus a dated addendum at the end of the file. `docs/GENE_SCOPE.md`'s CYP2C19 section given a "Validated against real reference material" line, matching TPMT/DPYD's existing equivalent lines. `README.md`'s status line rewritten to state the total real-sample count (22, up from 14) across all four genes and call out GM17203 specifically; the `fixtures/getrm/` repository-structure comment updated from "14" to "22" and to list `cyp2c19/`.
+
+**Not done yet (deliberately deferred, not an oversight):**
+- SLCO1B1 GeT-RM cross-validation is still the one gene without real-reference-material validation -- carried forward from Phase 7's own notes, still blocked only by the Coriell search tool's reliability for that specific gene (a tool issue, not a data-availability one; a direct CDC per-gene PDF route, which worked well for CYP2C19 this session, may not exist for SLCO1B1 specifically and would need checking).
+- Phase 9 (Nextflow orchestration, `main.nf`) is still open.
+- Root `CLAUDE.md` project-list entry -- still not added (carried forward from every prior session's notes).
+
+**Next session should:**
+1. Sync this batch, review diff, commit ("CYP2C19 GeT-RM validation: 8 real reference samples, all exact matches, including a real *2/*17 compound heterozygote confirming the module's core design"), push.
+2. Once the user gives the go-ahead: try a direct CDC PDF route for SLCO1B1 GeT-RM validation (check `cdc.gov/lab-quality/php/get-rm/reference-materials.html` for a per-gene SLCO1B1 table first, before falling back to the known-flaky Coriell search tool), or move to Phase 9 (Nextflow orchestration) -- both are legitimate, the plan doesn't mandate an order between them.

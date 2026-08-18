@@ -1,0 +1,18 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr10>
+# GeT-RM reference material, Coriell ID GM17248. GeT-RM consensus diplotype:
+# reported as "*1/*1 (*17/*17)" in CDC's table -- the fuller consensus,
+# including the 2 methods that test the *17 promoter variant, is *17/*17
+# (homozygous increased-function). This fixture uses the fuller *17/*17
+# call, matching GM09301's fixture note above. Source: Pratt VM et al.
+# 2010, J Mol Diagn 12:835-846 (PMID 20889555), as reproduced in CDC's
+# public-domain data table
+# (https://www.cdc.gov/lab-quality/media/pdfs/2024/08/CYP2C19_GeneConsensus.pdf,
+# retrieved 2026-08-18). Genotype below constructed from this project's own
+# dbSNP-confirmed defining-variant coordinates (genes/cyp2c19.py), not
+# redistributed from GeT-RM/Coriell/CDC directly.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr10	94761900	rs12248560	C	T	99	PASS	.	GT	1/1
+chr10	94780653	rs4986893	G	A	99	PASS	.	GT	0/0
+chr10	94781859	rs4244285	G	A	99	PASS	.	GT	0/0
