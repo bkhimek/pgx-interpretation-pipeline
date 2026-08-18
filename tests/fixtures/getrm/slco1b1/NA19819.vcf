@@ -1,0 +1,16 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr12>
+# GeT-RM reference material, Coriell ID NA19819 (African Ancestry in
+# Southwest USA). GeT-RM consensus diplotype: *1B/*1B in the older
+# nomenclature, translating to *37/*37 -- a second, independent confirmation
+# of the *37/*37 call from a different population panel than NA17679.
+# Source: Pratt VM et al. 2016, J Mol Diagn 18:109-123 (PMID 26621101), as
+# reproduced in Coriell's "GeT-RM PGx Search" tool
+# (https://www.coriell.org/GeTRM/PGxSearch, retrieved 2026-08-18). Genotype
+# below constructed from this project's own dbSNP-confirmed defining-variant
+# coordinates (genes/slco1b1.py), not redistributed from GeT-RM/Coriell/CDC
+# directly.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr12	21176804	rs2306283	A	G	99	PASS	.	GT	1/1
+chr12	21178615	rs4149056	T	C	99	PASS	.	GT	0/0

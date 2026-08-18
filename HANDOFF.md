@@ -486,3 +486,34 @@ Picked up on the user's "let's do CYP2C19 GeT-RM validation" — the other remai
 **Next session should:**
 1. Sync this batch, review diff, commit ("CYP2C19 GeT-RM validation: 8 real reference samples, all exact matches, including a real *2/*17 compound heterozygote confirming the module's core design"), push.
 2. Once the user gives the go-ahead: try a direct CDC PDF route for SLCO1B1 GeT-RM validation (check `cdc.gov/lab-quality/php/get-rm/reference-materials.html` for a per-gene SLCO1B1 table first, before falling back to the known-flaky Coriell search tool), or move to Phase 9 (Nextflow orchestration) -- both are legitimate, the plan doesn't mandate an order between them.
+
+---
+
+## 2026-08-18 — Session 13 (SLCO1B1 GeT-RM validation, retry)
+
+**Goal:** retry SLCO1B1 GeT-RM cross-validation, the one gene left without real-reference-material validation after Phase 7 and the CYP2C19 follow-up work. Phase 7's original attempt failed due to Coriell search-tool browser flakiness specifically on the SLCO1B1 query, not a data-availability problem.
+
+**Data sourcing:** confirmed direct network access to `cdc.gov` is blocked by this sandbox's allowlist (`403 blocked-by-allowlist` from the sandbox's own proxy, same pattern documented in prior sessions). Also confirmed, as a new and distinct finding, that `mcp__workspace__web_fetch` *can* reach `cdc.gov` but returns unparseable binary content (`[binary data]`) for the Excel-format consolidated GeT-RM tables -- SLCO1B1, unlike TPMT and CYP2C19, has no standalone per-gene PDF on CDC's reference-materials page, only Excel-format coverage in the larger 137-sample and 363-sample consolidated studies. Both direct-download routes were therefore ruled out for this gene specifically.
+
+Retried the Coriell "GeT-RM PGx Search" web tool (`coriell.org/GeTRM/PGxSearch`) via Claude in Chrome browser tools, this time avoiding the Filter/On-Value dropdown UI that caused Phase 7's flakiness (stale element references after DOM re-renders). Instead: selected SLCO1B1 in the Gene dropdown, set Page Size to "All," and extracted the full 333-row results table in one `get_page_text` call -- a more reliable technique than iterative filtering/clicking, discovered this session and worth reusing for any future GeT-RM retrieval work.
+
+Identified the underlying publication (Pratt VM et al. 2016, *J Mol Diagn* 18:109-123, PMID 26621101 -- the 137-sample GeT-RM study, which explicitly lists SLCO1B1 among its 28 covered genes) and hand-selected 9 real, in-scope samples from the extracted table, mapping the study's older nomenclature (`*1A`/`*1B`/`*5`/`*15`) to this project's PharmVar-modern names (`*1`/`*37`/`*5`/`*15`).
+
+**Fixtures and tests:** built 9 new VCF fixtures under `tests/fixtures/getrm/slco1b1/` (`NA07029`, `NA12336` -- both `*1/*1`; `NA11839` -- `*1/*37`; `NA17679`, `NA19819` -- both `*37/*37`; `NA06991` -- `*15/*15`; `NA10847` -- dosage-inferred `*15/*5`; `HG00276`, `NA06993` -- both the flagship unphased-ambiguous `*1/*15` case), each with header comments citing the source publication and Coriell retrieval method. Extended `tests/test_getrm_validation.py` with a `_call_slco1b1()` helper and 9 new tests, updated its module docstring to cover the fourth gene and document the xlsx-binary-content and nomenclature-mapping notes.
+
+**Result: all 9 samples matched exactly**, including two real, independent confirmations of `genes/slco1b1.py`'s flagship unphased-ambiguity behavior (`HG00276`, `NA06993`: both correctly reported as AMBIGUOUS, `*1/*15` primary / `*37/*5` alternative, same phenotype either way) and a real confirmation of the dosage-inference logic (`NA10847`: `*15/*5` resolved from genotype dosage alone). A real, honest gap was also found and documented: no standalone `*1/*5` (heterozygous `*5`-only) sample exists anywhere in the real 333-row dataset -- only `*5/*15` combinations and unconfirmed `*5/(*15)` entries appear, so that diplotype remains synthetic-fixture-only, not GeT-RM-confirmed.
+
+`PYTHONPATH=. python3 tests/run_tests.py` and `PYTHONPATH=. pytest -q` each report **167/167 pass, 0 skipped** (158 unchanged + 9 new `test_getrm_validation.py` tests).
+
+`docs/VALIDATION.md` given a new "SLCO1B1 (added in a later session, retry of the Section 3 gap above)" subsection under Section 3, the original Section 3 SLCO1B1 gap-note updated with a pointer to it, the "Deliberately not done this phase" list's SLCO1B1 line removed (closed), and a new dated addendum at the end of the file. `docs/GENE_SCOPE.md`'s SLCO1B1 section given a "Validated against real reference material" line, matching TPMT/DPYD/CYP2C19's existing equivalent lines. `README.md`'s status line updated to state the total real-sample count (31, up from 22) across all four genes and call out the SLCO1B1 retry closing the last open reference-material gap; the `fixtures/getrm/` repository-structure comment updated from "22" to "31" and to list `slco1b1/`.
+
+**Every gene in this project's v1 scope now has real GeT-RM reference-material validation** -- TPMT (6 samples), DPYD (8 samples), CYP2C19 (8 samples), SLCO1B1 (9 samples), 31 total, all either exact matches or correctly-declined ambiguous/multi-locus/unsupported cases.
+
+**Not done yet (deliberately deferred, not an oversight):**
+- A live PharmCAT run is still the one open item from the original Phase 7 list (see `docs/VALIDATION.md` §4's infeasibility note -- Java version, missing bcftools/htslib, and network-allowlist blocks on the actual binary download, all independently confirmed; a reasonable task for a future session on the user's own WSL machine).
+- Phase 9 (Nextflow orchestration, `main.nf`) is still open.
+- Root `CLAUDE.md` project-list entry -- still not added (carried forward from every prior session's notes).
+
+**Next session should:**
+1. Sync this batch, review diff, commit ("SLCO1B1 GeT-RM validation: 9 real reference samples, all exact matches, including two independent real confirmations of the flagship unphased-ambiguity behavior"), push.
+2. Once the user gives the go-ahead: move to Phase 9 (Nextflow orchestration) -- reference-material validation is now complete for all four v1 genes, so this is a natural next milestone. A live PharmCAT run (on the user's own WSL machine, not this sandbox) is the other legitimate option.

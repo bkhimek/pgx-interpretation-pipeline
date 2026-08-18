@@ -73,7 +73,7 @@ HG00118 is a genuinely valuable find, not a constructed edge case: a real GeT-RM
 
 **Data-quality note:** the HapB3 exonic tag (`c.1236G>A`) genotype could not be retrieved for any of the 8 DPYD samples this session — the Coriell search tool's column-selection UI became unreliable partway through data collection (see Section 4a's own established pattern of documenting real environment limitations rather than silently working around them). Every DPYD fixture represents this honestly as a VCF no-call (`./.`) rather than fabricating a value. This does not affect any result above: per both this project's and PharmCAT's own documented logic, the intronic variant (which *was* retrieved for every sample) is authoritative whenever observed, regardless of the exonic tag's status.
 
-**SLCO1B1 was not GeT-RM-cross-validated this phase.** The Coriell search tool became unresponsive to this session's browser-automation tooling specifically when switching to the SLCO1B1 gene query (a tool-reliability issue, not a data-availability one — GeT-RM's 2016 137-sample study, ref. 7 in `cdc.gov/lab-quality/php/get-rm/reference-materials.html`, does cover SLCO1B1). SLCO1B1's existing 12 synthetic fixtures (Phase 4, hand-derived against the real CPIC diplotype table) remain fully valid and tested; a live GeT-RM cross-check for SLCO1B1 is a reasonable follow-up for a future session with a fresh browser-tool state.
+**SLCO1B1 was not GeT-RM-cross-validated this phase.** The Coriell search tool became unresponsive to this session's browser-automation tooling specifically when switching to the SLCO1B1 gene query (a tool-reliability issue, not a data-availability one — GeT-RM's 2016 137-sample study, ref. 7 in `cdc.gov/lab-quality/php/get-rm/reference-materials.html`, does cover SLCO1B1). SLCO1B1's existing 12 synthetic fixtures (Phase 4, hand-derived against the real CPIC diplotype table) remain fully valid and tested; a live GeT-RM cross-check for SLCO1B1 is a reasonable follow-up for a future session with a fresh browser-tool state. **Update: this retry succeeded in a later session — see the "SLCO1B1" subsection below.**
 
 ### CYP2C19 (added in a later session, after Phase 8)
 
@@ -97,6 +97,34 @@ Once CYP2C19 (Phase 8) and its Tier 2 evidence existed, the same reference-mater
 **GM17203 is the most important result in this table, not just another data point.** `genes/cyp2c19.py`'s module docstring makes a specific, falsifiable architectural claim: that double-heterozygosity at the `*2` and `*17` loci should be resolved directly into a compound diplotype rather than declined the way DPYD declines its structurally similar `*2A`+`*13` situation, because (a) no PharmVar-defined cis-compound allele combines these two SNPs, unlike TPMT's `*3A`, and (b) a Nordic haplotype study found `*17` and `*2` essentially never co-occur in cis in real populations. GM17203 is a real GeT-RM reference sample that is exactly this genotype, and the real laboratory consensus (four independent genotyping platforms) reports it as a direct, unflagged `*2/*17` diplotype — not an unresolved or ambiguous call. This is independent, real-world confirmation of the module's design reasoning, in the same spirit as HG00118's confirmation of DPYD's multi-locus decline logic above, just supporting the opposite design choice for a genuinely different reason.
 
 All eight samples matched exactly — no ambiguous, insufficient-data, or unsupported-allele cases arose, since every sample selected had a real consensus genotype composed entirely of `genes/cyp2c19.py`'s four in-scope alleles (`*1`/`*2`/`*3`/`*17`). Samples using out-of-scope alleles (`*4`, `*8`, `*10`) visible in CDC's table were correctly excluded, per the same scope discipline applied to TPMT and DPYD above.
+
+### SLCO1B1 (added in a later session, retry of the Section 3 gap above)
+
+The original Phase 7 attempt failed for a tool-reliability reason (Coriell's Filter/On-Value dropdown UI going stale mid-session), not a data-availability one. Retried in a later session with a more robust technique: rather than iteratively filtering the Coriell "GeT-RM PGx Search" tool's table via its dropdown UI, the Page Size control was set to "All" and the full results table (333 rows) was extracted in one shot via a single page-text read — avoiding the repeated clicking/filtering that caused the original flakiness.
+
+**Source:** Pratt VM, Everts RE, Aggarwal P, Beyer BN, Broeckel U, Epstein MP, et al., "Characterization of 137 Genomic DNA Reference Materials for 28 Pharmacogenetic Genes: A GeT-RM Collaborative Project." *J Mol Diagn* 2016;18:109-123 (PMID 26621101), as reproduced in Coriell's "GeT-RM PGx Search" tool (`https://www.coriell.org/GeTRM/PGxSearch`, retrieved 2026-08-18). Fixtures under `tests/fixtures/getrm/slco1b1/`, tests in `tests/test_getrm_validation.py`.
+
+**A retrieval-route note, handled explicitly rather than glossed over:** unlike TPMT and CYP2C19, CDC does not publish a standalone per-gene PDF consensus table for SLCO1B1 — it is only covered by the larger 137-sample consolidated Excel workbook. That workbook was confirmed reachable via `mcp__workspace__web_fetch` but returned unparseable binary content (`[binary data]`) rather than a usable table, ruling out a direct-download route entirely in this sandbox. The Coriell web tool's HTML rendering of the same underlying data was the only workable path found.
+
+**A nomenclature-mapping note:** this 2016 study predates PharmVar's current SLCO1B1 naming and uses `*1A`/`*1B`/`*5`/`*15`. Mapped to this project's modern nomenclature as: `*1A` = `*1` (reference), `*1B` = `*37` (rs2306283 alone, normal function), `*5` = `*5` (rs4149056 alone, no function), `*15` = `*15` (both variants in cis, no function). Samples marked with a parenthetical confirmation caveat in the Coriell table were excluded from this panel.
+
+| Coriell ID | GeT-RM consensus (old nomenclature) | This project's call | Match? |
+|---|---|---|---|
+| NA07029 | `*1A/*1A` → `*1/*1` | `*1/*1`, Normal function, SUPPORTED | Exact match |
+| NA12336 | `*1A/*1A` → `*1/*1` | Same | Exact match |
+| NA11839 | `*1A/*1B` → `*1/*37` | `*1/*37`, Normal function, SUPPORTED | Exact match |
+| NA17679 | `*1B/*1B` → `*37/*37` | `*37/*37`, Normal function, SUPPORTED | Exact match |
+| NA19819 | `*1B/*1B` → `*37/*37` | Same (independent confirmation, different population panel) | Exact match |
+| NA06991 | `*15/*15` | `*15/*15`, Poor function, SUPPORTED | Exact match |
+| NA10847 | `*5/*15` | `*15/*5` (dosage-inferred), Poor function, SUPPORTED | Exact match |
+| HG00276 | `*1/*15` | AMBIGUOUS: `*1/*15` (primary) or `*37/*5` (alternative) | Correct primary candidate; correctly declines to assert it as certain |
+| NA06993 | `*1/*15` | Same as HG00276 | Same |
+
+**HG00276 and NA06993 are the most scientifically interesting result in this table, not a discrepancy** — the same pattern as TPMT's `*3A` samples in Section 3 above. Both are heterozygous at both defining positions with no external phasing available from genotype data alone; cis (`*1/*15`) and trans (`*37/*5`) are equally consistent. This project reports AMBIGUOUS with the true answer as the primary candidate, rather than asserting certainty the input doesn't support. Unlike TPMT's `*3A` case, this ambiguity happens not to cross a phenotype boundary (both candidates are "Decreased function" — already covered by the synthetic `unphased_ambiguous.vcf` fixture from Phase 4), so these two real samples confirm the *phasing* behavior specifically, not a new phenotype-boundary case.
+
+**A real, honest gap in the available reference data:** no standalone "`*1/*5`" sample (heterozygous for `*5` alone, without `*15` present) appears anywhere in the 333-row Coriell dataset — only `*5/*15` combinations and unconfirmed `*5/(*15)` entries were found. This project's own `star5_heterozygous.vcf` synthetic fixture (Phase 4) already covers this diplotype and is unaffected, but it remains a synthetic-only case rather than a GeT-RM-confirmed one, worth noting plainly rather than implying broader coverage than what was actually found.
+
+All nine samples matched exactly (including both real-world confirmations of the ambiguous-phase behavior) — no unsupported-allele or insufficient-data cases arose, since every sample selected had a real consensus genotype composed entirely of `genes/slco1b1.py`'s four in-scope alleles (`*1`/`*37`/`*5`/`*15`). Samples using out-of-scope alleles (`*14`, `*17`, `*21`) visible in the Coriell table were correctly excluded, per the same scope discipline applied to TPMT, DPYD, and CYP2C19 above.
 
 ## 4. External software comparison (PharmCAT)
 
@@ -125,9 +153,12 @@ PharmCAT's own documentation site (`pharmcat.clinpgx.org`) is reachable from thi
 ## Deliberately not done this phase
 
 - A live PharmCAT run (see Section 4's infeasibility note — real follow-up work, not silently dropped).
-- SLCO1B1 GeT-RM cross-validation (see Section 3 — a tool-reliability issue this session, not a data-availability one; real follow-up work).
-- GIAB supplementary data: not used. GeT-RM alone provided real, in-scope, name-matched reference samples for every locus this project actually implements (TPMT, DPYD); GIAB was never specifically curated for PGx diplotype ground truth (the plan's own framing, Section 7), so it would have added complexity without adding coverage this phase didn't already get from GeT-RM directly.
+- GIAB supplementary data: not used. GeT-RM alone provided real, in-scope, name-matched reference samples for every locus this project actually implements (TPMT, DPYD, CYP2C19, SLCO1B1); GIAB was never specifically curated for PGx diplotype ground truth (the plan's own framing, Section 7), so it would have added complexity without adding coverage this phase didn't already get from GeT-RM directly.
 
 ## Addendum (2026-08-18): CYP2C19 GeT-RM validation
 
 Once CYP2C19 (Phase 8) and its Tier 2 evidence existed, the same reference-material discipline was applied to it in a follow-up session — see Section 3's "CYP2C19" subsection above. All 8 hand-selected in-scope samples matched exactly, including a real compound-heterozygous `*2/*17` sample (GM17203) that independently confirms `genes/cyp2c19.py`'s central architectural design decision. SLCO1B1 GeT-RM cross-validation and a live PharmCAT run remain the two open items from the original Phase 7 list.
+
+## Addendum (2026-08-18): SLCO1B1 GeT-RM validation
+
+The original Phase 7 SLCO1B1 attempt (browser-tool flakiness in Coriell's Filter/On-Value UI) was retried successfully in a later session using a more reliable technique — see Section 3's "SLCO1B1" subsection above. All 9 hand-selected in-scope samples matched exactly, including two independent real confirmations of the flagship unphased-ambiguity behavior (`HG00276`, `NA06993`, both correctly reported as AMBIGUOUS `*1/*15` primary / `*37/*5` alternative) and a real dosage-inferred `*15/*5` sample (`NA10847`). Every gene in this project's v1 scope (TPMT, DPYD, CYP2C19, SLCO1B1) now has real GeT-RM reference-material validation; a live PharmCAT run remains the one open item from the original Phase 7 list.

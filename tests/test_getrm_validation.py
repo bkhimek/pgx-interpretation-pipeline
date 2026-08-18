@@ -13,25 +13,45 @@ for the full license check this project's Phase 0 gated on before Phase 7.
 
 Scope discipline (the plan's own explicit requirement): every sample below
 was hand-selected because its GeT-RM consensus diplotype/genotype is
-composed ENTIRELY of star alleles/variants this project's TPMT, DPYD, and
-CYP2C19 modules actually define (genes/tpmt.py's four-allele scope;
-genes/dpyd.py's four-locus scope; genes/cyp2c19.py's four-allele scope).
-GeT-RM samples carrying alleles outside that scope (TPMT
-*6/*8/*12/*16/*21/*24/*32/*33/*40/*46; DPYD's older 2016-study *4/*9 panel,
-which does not correspond to this project's CPIC-actionable variant set;
-CYP2C19's *4/*8/*10) are correctly NOT claimed as benchmarked here -- this
-project's own modules would report `unsupported_allele`/fall outside their
-documented scope for those, and asserting a match against them would not be
-a meaningful test.
+composed ENTIRELY of star alleles/variants this project's TPMT, DPYD,
+CYP2C19, and SLCO1B1 modules actually define (genes/tpmt.py's four-allele
+scope; genes/dpyd.py's four-locus scope; genes/cyp2c19.py's four-allele
+scope; genes/slco1b1.py's four-allele scope). GeT-RM samples carrying
+alleles outside that scope (TPMT *6/*8/*12/*16/*21/*24/*32/*33/*40/*46;
+DPYD's older 2016-study *4/*9 panel, which does not correspond to this
+project's CPIC-actionable variant set; CYP2C19's *4/*8/*10; SLCO1B1's
+*14/*17/*21 increased-function/other alleles) are correctly NOT claimed as
+benchmarked here -- this project's own modules would report
+`unsupported_allele`/fall outside their documented scope for those, and
+asserting a match against them would not be a meaningful test.
 
-Fixture provenance: each VCF under tests/fixtures/getrm/{tpmt,dpyd,cyp2c19}/
-is named by its Coriell sample ID and documents its own GeT-RM source
-(publication, table, retrieval method) in its header comments. Genotypes
-were reconstructed from this project's own dbSNP-confirmed defining-variant
-coordinates (already established in genes/tpmt.py, genes/dpyd.py, and
-genes/cyp2c19.py) paired with the real GeT-RM consensus call for each
+Fixture provenance: each VCF under
+tests/fixtures/getrm/{tpmt,dpyd,cyp2c19,slco1b1}/ is named by its Coriell
+sample ID and documents its own GeT-RM source (publication, table,
+retrieval method) in its header comments. Genotypes were reconstructed from
+this project's own dbSNP-confirmed defining-variant coordinates (already
+established in genes/tpmt.py, genes/dpyd.py, genes/cyp2c19.py, and
+genes/slco1b1.py) paired with the real GeT-RM consensus call for each
 sample -- not redistributed verbatim from CDC/Coriell's own data
 tables/tool output.
+
+A note specific to the SLCO1B1 samples: unlike TPMT/DPYD/CYP2C19 (which
+have per-gene CDC PDF consensus tables), SLCO1B1 is only covered by the
+larger 137-sample Excel-format GeT-RM study (Pratt et al. 2016), which this
+sandbox's network allowlist and web-fetch tooling cannot parse directly
+(xlsx binary content is unreadable through the available fetch path). The
+data was instead sourced via Coriell's own "GeT-RM PGx Search" web tool
+(https://www.coriell.org/GeTRM/PGxSearch), which serves the same
+CDC-sourced consensus calls from the same publication in an HTML table --
+retrieved via browser automation (page size set to "All", full table
+extracted as text) rather than a raw file download. The old SLCO1B1
+star-allele nomenclature this 2016 study uses (*1A, *1B, *5, *15) is mapped
+to this project's PharmVar-modern nomenclature (*1, *37, *5, *15) as:
+*1A=*1 (reference), *1B=*37 (rs2306283 alone, normal function), *5=*5
+(rs4149056 alone, no function), *15=*15 (both variants in cis, no
+function). Samples whose GeT-RM entry carries a parenthetical
+"(SNV not confirmed)" or similar uncertainty marker were excluded from this
+panel to keep only fully-confirmed calls.
 
 A note specific to the CYP2C19 samples: CDC's own 107-sample table
 (Pratt et al. 2010) reports some consensus calls as e.g. "*1/*1 (*1/*17)"
@@ -54,6 +74,7 @@ from pathlib import Path
 
 from pgx_interpreter.genes.cyp2c19 import call_cyp2c19
 from pgx_interpreter.genes.dpyd import call_dpyd
+from pgx_interpreter.genes.slco1b1 import call_slco1b1
 from pgx_interpreter.genes.tpmt import call_tpmt
 from pgx_interpreter.models import GenomeBuild
 from pgx_interpreter.normalize import parse_vcf
@@ -61,6 +82,7 @@ from pgx_interpreter.normalize import parse_vcf
 TPMT_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "tpmt"
 DPYD_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "dpyd"
 CYP2C19_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "cyp2c19"
+SLCO1B1_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "slco1b1"
 
 
 def _call_tpmt(coriell_id: str):
@@ -76,6 +98,11 @@ def _call_dpyd(coriell_id: str):
 def _call_cyp2c19(coriell_id: str):
     variants = parse_vcf(CYP2C19_DIR / f"{coriell_id}.vcf", GenomeBuild.GRCH38)
     return call_cyp2c19(variants, sample_id=coriell_id, genome_build=GenomeBuild.GRCH38)
+
+
+def _call_slco1b1(coriell_id: str):
+    variants = parse_vcf(SLCO1B1_DIR / f"{coriell_id}.vcf", GenomeBuild.GRCH38)
+    return call_slco1b1(variants, sample_id=coriell_id, genome_build=GenomeBuild.GRCH38)
 
 
 # --- TPMT: 6 GeT-RM samples (Pratt et al. 2022, J Mol Diagn 24:1079-1088) ---
@@ -275,3 +302,92 @@ def test_getrm_GM17203_real_compound_star2_star17_matches_consensus():
     assert d["phenotype"] == "Intermediate Metabolizer"
     assert len(d["interpretation_notes"]) == 1
     assert "compound diplotype" in d["interpretation_notes"][0]
+
+
+# --- SLCO1B1: 9 GeT-RM samples (Pratt et al. 2016, J Mol Diagn 18:109-123) ---
+
+
+def test_getrm_NA07029_matches_consensus_star1_star1():
+    d = _call_slco1b1("NA07029").to_dict()
+    assert d["diplotype"] == "*1/*1"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Normal function"
+
+
+def test_getrm_NA12336_matches_consensus_star1_star1():
+    d = _call_slco1b1("NA12336").to_dict()
+    assert d["diplotype"] == "*1/*1"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Normal function"
+
+
+def test_getrm_NA11839_matches_consensus_star1_star37():
+    # Old nomenclature *1A/*1B -> this project's *1/*37.
+    d = _call_slco1b1("NA11839").to_dict()
+    assert d["diplotype"] == "*1/*37"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Normal function"
+
+
+def test_getrm_NA17679_matches_consensus_star37_star37():
+    # Old nomenclature *1B/*1B -> this project's *37/*37.
+    d = _call_slco1b1("NA17679").to_dict()
+    assert d["diplotype"] == "*37/*37"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Normal function"
+
+
+def test_getrm_NA19819_matches_consensus_star37_star37():
+    # Second, independent *37/*37 confirmation from a different population
+    # panel than NA17679.
+    d = _call_slco1b1("NA19819").to_dict()
+    assert d["diplotype"] == "*37/*37"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Normal function"
+
+
+def test_getrm_NA06991_matches_consensus_star15_star15():
+    d = _call_slco1b1("NA06991").to_dict()
+    assert d["diplotype"] == "*15/*15"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Poor function"
+    assert d["alternative_diplotypes"] == []
+
+
+def test_getrm_NA10847_dosage_inferred_star15_star5_matches_consensus():
+    # Real reference-material confirmation of the dosage-inference logic
+    # (rs2306283 het + rs4149056 hom_alt resolves unambiguously from
+    # genotype dosage alone) -- previously only exercised by a synthetic
+    # fixture (test_slco1b1.py's dosage_inferred_star15_star5.vcf).
+    d = _call_slco1b1("NA10847").to_dict()
+    assert d["diplotype"] == "*15/*5"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Poor function"
+    assert len(d["interpretation_notes"]) == 1
+    assert "phase inferred from genotype dosage" in d["interpretation_notes"][0]
+
+
+def test_getrm_HG00276_star1_star15_correctly_reported_ambiguous_without_external_phasing():
+    # GeT-RM's *1/*15 consensus for this sample reflects external phasing
+    # information this project's genotype-only VCF input does not have
+    # access to. From genotype dosage alone, cis (*1/*15) and trans
+    # (*37/*5) are equally consistent (see genes/slco1b1.py's module
+    # docstring, the flagship unphased-ambiguity case). Reporting AMBIGUOUS
+    # here -- rather than guessing *1/*15 just because it happens to be the
+    # true answer -- is the scientifically correct behavior for this input.
+    # The true GeT-RM diplotype (*1/*15) IS the primary candidate reported,
+    # and both candidates share the same phenotype here regardless of phase.
+    d = _call_slco1b1("HG00276").to_dict()
+    assert d["confidence"] == "ambiguous"
+    assert d["diplotype"] == "*1/*15"
+    assert d["alternative_diplotypes"] == ["*37/*5"]
+    assert d["phenotype"] == "Decreased function (phase unknown -- see alternative_diplotypes)"
+
+
+def test_getrm_NA06993_star1_star15_correctly_reported_ambiguous_without_external_phasing():
+    # Second, independent real sample with the same flagship unphased
+    # genotype as HG00276.
+    d = _call_slco1b1("NA06993").to_dict()
+    assert d["confidence"] == "ambiguous"
+    assert d["diplotype"] == "*1/*15"
+    assert d["alternative_diplotypes"] == ["*37/*5"]

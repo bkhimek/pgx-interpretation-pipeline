@@ -1,0 +1,19 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr12>
+# GeT-RM reference material, Coriell ID NA06991 (CEPH/Utah Pedigree 1341).
+# GeT-RM consensus diplotype: *15/*15 -- homozygous for the combined
+# rs2306283+rs4149056 haplotype, unambiguous (both haplotypes trivially
+# carry both variants, no dosage inference needed). Note: this same
+# Coriell ID is separately used as a DPYD GeT-RM fixture elsewhere in this
+# project (tests/fixtures/getrm/dpyd/NA06991.vcf) -- the same cell line,
+# characterized independently for a different gene; no conflict. Source:
+# Pratt VM et al. 2016, J Mol Diagn 18:109-123 (PMID 26621101), as
+# reproduced in Coriell's "GeT-RM PGx Search" tool
+# (https://www.coriell.org/GeTRM/PGxSearch, retrieved 2026-08-18). Genotype
+# below constructed from this project's own dbSNP-confirmed defining-variant
+# coordinates (genes/slco1b1.py), not redistributed from GeT-RM/Coriell/CDC
+# directly.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr12	21176804	rs2306283	A	G	99	PASS	.	GT	1/1
+chr12	21178615	rs4149056	T	C	99	PASS	.	GT	1/1

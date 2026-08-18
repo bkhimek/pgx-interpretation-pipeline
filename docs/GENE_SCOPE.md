@@ -100,6 +100,8 @@ See `pgx_interpreter/genes/dpyd.py`'s module docstring for full Tier 1 citations
 
 See `pgx_interpreter/genes/slco1b1.py`'s module docstring for full Tier 1 citations and the complete genotype-dosage truth table.
 
+**Validated against real reference material:** 9 real GeT-RM (CDC) consensus-genotype samples, all exact matches, including two (`HG00276`, `NA06993`) that independently confirm this module's flagship unphased-ambiguity behavior against real laboratory data, and one (`NA10847`) confirming the dosage-inference logic for `*15/*5`. See `docs/VALIDATION.md` §3.
+
 **Tier 2 (drug recommendation, Phase 5):** simvastatin, via `pgx_interpreter/evidence.py`, guideline `PA166105005` — CPIC's 2022 Update "Table 1: Recommended dosing of simvastatin based on SLCO1B1 phenotype", fetched directly from ClinPGx's live API. This module's three producible phenotype tiers all map cleanly: Normal function → desired starting dose (Strong); Decreased function → alternative statin, or simvastatin limited to <20mg/day if warranted (Strong); Poor function → alternative statin, no simvastatin dose-cap fallback given by CPIC for this tier so none is invented here (Strong). "Possible decreased function" and "Increased function" are out of scope (documented above) and this module can never produce them, so no Tier 2 entries exist for them either.
 
 See `pgx_interpreter/evidence.py`'s module docstring for the full Tier 2 citation and design rationale (why the embedded HTML dosing tables aren't parsed programmatically, and why `recommend()` is a separate step from `call_slco1b1`).

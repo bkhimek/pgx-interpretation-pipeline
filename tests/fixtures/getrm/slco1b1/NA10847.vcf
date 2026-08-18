@@ -1,0 +1,20 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr12>
+# GeT-RM reference material, Coriell ID NA10847 (CEPH/Utah Pedigree 1334).
+# GeT-RM consensus diplotype: *5/*15 -- one haplotype carries rs4149056
+# alone (*5), the other carries both rs2306283 and rs4149056 (*15).
+# Genotype dosage: rs2306283 is heterozygous (only the *15 haplotype
+# carries it), rs4149056 is homozygous (both the *5 and *15 haplotypes
+# carry it) -- resolvable from dosage alone without external phasing, same
+# logic as this project's dosage_inferred_star15_star5.vcf synthetic
+# fixture (Phase 4), now confirmed against a real reference sample.
+# Source: Pratt VM et al. 2016, J Mol Diagn 18:109-123 (PMID 26621101), as
+# reproduced in Coriell's "GeT-RM PGx Search" tool
+# (https://www.coriell.org/GeTRM/PGxSearch, retrieved 2026-08-18). Genotype
+# below constructed from this project's own dbSNP-confirmed defining-variant
+# coordinates (genes/slco1b1.py), not redistributed from GeT-RM/Coriell/CDC
+# directly.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr12	21176804	rs2306283	A	G	99	PASS	.	GT	0/1
+chr12	21178615	rs4149056	T	C	99	PASS	.	GT	1/1

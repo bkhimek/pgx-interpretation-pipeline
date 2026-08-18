@@ -1,0 +1,22 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr12>
+# GeT-RM reference material, Coriell ID HG00276 (Finnish in Finland).
+# GeT-RM consensus diplotype: *1/*15 -- but per this project's own
+# documented flagship ambiguity (genes/slco1b1.py module docstring,
+# structurally identical to TPMT's *3A case): heterozygous at both
+# rs2306283 and rs4149056 is equally consistent with cis (*1/*15) and
+# trans (*37/*5) without external phasing data. The real GeT-RM consensus
+# happens to state the cis interpretation, but this project's genotype-only
+# input correctly reports AMBIGUOUS with *1/*15 as the primary candidate
+# rather than asserting certainty it doesn't have -- same treatment as
+# TPMT's NA12753/NA15245 *1/*3A samples (docs/VALIDATION.md Section 3).
+# Source: Pratt VM et al. 2016, J Mol Diagn 18:109-123 (PMID 26621101), as
+# reproduced in Coriell's "GeT-RM PGx Search" tool
+# (https://www.coriell.org/GeTRM/PGxSearch, retrieved 2026-08-18). Genotype
+# below constructed from this project's own dbSNP-confirmed defining-variant
+# coordinates (genes/slco1b1.py), not redistributed from GeT-RM/Coriell/CDC
+# directly.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr12	21176804	rs2306283	A	G	99	PASS	.	GT	0/1
+chr12	21178615	rs4149056	T	C	99	PASS	.	GT	0/1
