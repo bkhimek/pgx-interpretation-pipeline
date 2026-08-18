@@ -1,0 +1,8 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr10>
+##comment=rs4244285 is multi-allelic in dbSNP (G>A / G>C / G>T all real); only G>A defines CYP2C19*2. This record deliberately uses the G>C substitution at the exact same position -- a real variant, just not the one that defines *2 -- to prove position-only matching would be wrong.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr10	94761900	rs12248560	C	T	99	PASS	.	GT	0/0
+chr10	94780653	rs4986893	G	A	99	PASS	.	GT	0/0
+chr10	94781859	rs4244285	G	C	99	PASS	.	GT	0/1

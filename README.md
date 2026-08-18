@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** Phase 7 complete — validation and benchmarking. Real GeT-RM (CDC) reference-material samples now cross-validate TPMT and DPYD against independently published consensus genotypes (14 samples, all exact matches or correctly-declined ambiguous/multi-locus cases — see `docs/VALIDATION.md`); a genuine test-coverage gap in `normalize.py`'s genotype parsing was found and closed; PharmCAT comparison was documented against its own published methodology (a live run was attempted and found infeasible in this sandbox — see `docs/VALIDATION.md` §4 for the specific reasons). TPMT, DPYD, and SLCO1B1 go all the way from VCF to a rendered report (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML/Markdown/docx report) via `pgx_interpreter/report.py`. See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and known limitations.
+**Status:** Phase 8 complete — CYP2C19 added, the first gene since Architecture Review 1. Four genes now supported: TPMT, DPYD, SLCO1B1, CYP2C19. CYP2C19 answers the review's own closing question (§6) by being a genuinely third calling-logic shape — three independent single-SNP loci where double-heterozygosity is resolved directly to a compound diplotype rather than declined, backed by real population-genetics and nomenclature evidence (see `docs/GENE_SCOPE.md`). `pgx_interpreter/report.py` needed zero code changes to support the fourth gene, since it's driven entirely by each result's own `gene` field rather than a hardcoded list. Phase 7 (validation) cross-validated TPMT and DPYD against real GeT-RM (CDC) reference-material samples (14 samples, all exact matches or correctly-declined ambiguous/multi-locus cases — see `docs/VALIDATION.md`) and documented a PharmCAT comparison against its own published methodology (a live run was attempted and found infeasible in this sandbox — see `docs/VALIDATION.md` §4). TPMT, DPYD, SLCO1B1, and CYP2C19 all go from VCF to a rendered report (variant → allele/diplotype → phenotype → JSON/TSV/HTML/Markdown/docx report) via `pgx_interpreter/report.py`; CYP2C19's Tier 2 drug-recommendation wiring is real follow-up work, not yet done (see `HANDOFF.md`). See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and known limitations.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -14,7 +14,7 @@ VCF → variant → allele/haplotype → diplotype → functional phenotype → 
 
 ## Scope
 
-**v1 genes:** TPMT, DPYD, SLCO1B1, then CYP2C19.
+**v1 genes:** TPMT, DPYD, SLCO1B1, CYP2C19 — all four now implemented (Phase 8).
 
 **Explicitly out of scope:** CYP2D6 — it requires specialist structural-variant-aware calling (CYP2D7 homology, CNV, hybrid alleles) that this project deliberately isn't attempting. See `docs/PGX_FOUNDATIONS.md` and the project plan §9 for why.
 
@@ -52,7 +52,7 @@ Evidence is fetched via a versioned adapter (fetch → validate → stamp with r
 
 ## Repository structure
 
-Current state (Phase 7). The full target layout — `cyp2c19.py` (Phase 8), `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
+Current state (Phase 8). The full target layout — `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
 
 ```text
 pgx-interpretation-pipeline/
@@ -72,9 +72,11 @@ pgx-interpretation-pipeline/
 │   ├── report.py               # Phase 6: report assembly, sections 1-10, 5 renderers
 │   │                           #   (JSON/TSV/HTML/Markdown stdlib-only; docx needs [docx] extra)
 │   └── genes/
+│       ├── _shared.py          # gene-agnostic zygosity vocabulary, extracted post-Review-1
 │       ├── tpmt.py
 │       ├── dpyd.py
-│       └── slco1b1.py
+│       ├── slco1b1.py
+│       └── cyp2c19.py          # Phase 8: three independent single-SNP loci, compound-diplotype model
 ├── tests/
 │   ├── run_tests.py
 │   ├── test_models.py
@@ -82,6 +84,7 @@ pgx-interpretation-pipeline/
 │   ├── test_tpmt.py
 │   ├── test_dpyd.py
 │   ├── test_slco1b1.py
+│   ├── test_cyp2c19.py         # Phase 8
 │   ├── test_evidence.py
 │   ├── test_report.py
 │   ├── test_getrm_validation.py  # Phase 7: real GeT-RM reference-material cross-validation
@@ -89,6 +92,7 @@ pgx-interpretation-pipeline/
 │   ├── fixtures/tpmt/          # 7 VCF fixtures
 │   ├── fixtures/dpyd/          # 12 VCF fixtures
 │   ├── fixtures/slco1b1/       # 12 VCF fixtures
+│   ├── fixtures/cyp2c19/       # 14 VCF fixtures
 │   ├── fixtures/evidence/      # 3 real ClinPGx guideline-annotation payloads, network-free tests
 │   └── fixtures/getrm/         # 14 real GeT-RM sample fixtures (tpmt/, dpyd/), see docs/VALIDATION.md
 ├── pyproject.toml

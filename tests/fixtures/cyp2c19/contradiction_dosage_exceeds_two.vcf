@@ -1,0 +1,8 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr10>
+##comment=*2 homozygous-alt (dosage 2) together with *3 heterozygous (dosage 1) -- total dosage 3, more than two chromosomes can carry. A genuine contradiction under this module's model, not a resolvable compound diplotype.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr10	94761900	rs12248560	C	T	99	PASS	.	GT	0/0
+chr10	94780653	rs4986893	G	A	99	PASS	.	GT	0/1
+chr10	94781859	rs4244285	G	A	99	PASS	.	GT	1/1

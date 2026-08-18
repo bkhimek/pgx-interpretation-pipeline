@@ -1,0 +1,8 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr10>
+##comment=Both *2- and *3-defining variants heterozygous simultaneously -- the real, standard CPIC/clinical-literature Poor Metabolizer compound-heterozygous case (Frontiers in Pharmacology 2024 review cites *2/*3 directly as a PM example).
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr10	94761900	rs12248560	C	T	99	PASS	.	GT	0/0
+chr10	94780653	rs4986893	G	A	99	PASS	.	GT	0/1
+chr10	94781859	rs4244285	G	A	99	PASS	.	GT	0/1

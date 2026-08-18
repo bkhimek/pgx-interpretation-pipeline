@@ -39,6 +39,7 @@ def _require_docx() -> None:
 
 from pgx_interpreter import report
 from pgx_interpreter.evidence import recommend
+from pgx_interpreter.genes.cyp2c19 import call_cyp2c19
 from pgx_interpreter.genes.dpyd import call_dpyd
 from pgx_interpreter.genes.slco1b1 import call_slco1b1
 from pgx_interpreter.genes.tpmt import call_tpmt
@@ -48,6 +49,7 @@ from pgx_interpreter.normalize import parse_vcf
 FIXTURES_TPMT_DIR = Path(__file__).resolve().parent / "fixtures" / "tpmt"
 FIXTURES_DPYD_DIR = Path(__file__).resolve().parent / "fixtures" / "dpyd"
 FIXTURES_SLCO1B1_DIR = Path(__file__).resolve().parent / "fixtures" / "slco1b1"
+FIXTURES_CYP2C19_DIR = Path(__file__).resolve().parent / "fixtures" / "cyp2c19"
 FIXTURES_EVIDENCE_DIR = Path(__file__).resolve().parent / "fixtures" / "evidence"
 
 
@@ -64,6 +66,11 @@ def _dpyd(fixture_name: str, sample_id: str = "TEST"):
 def _slco1b1(fixture_name: str, sample_id: str = "TEST"):
     variants = parse_vcf(FIXTURES_SLCO1B1_DIR / fixture_name, GenomeBuild.GRCH38)
     return call_slco1b1(variants, sample_id=sample_id, genome_build=GenomeBuild.GRCH38)
+
+
+def _cyp2c19(fixture_name: str, sample_id: str = "TEST"):
+    variants = parse_vcf(FIXTURES_CYP2C19_DIR / fixture_name, GenomeBuild.GRCH38)
+    return call_cyp2c19(variants, sample_id=sample_id, genome_build=GenomeBuild.GRCH38)
 
 
 # --- build_report(): assembly rules ---
@@ -206,10 +213,26 @@ def test_json_report_multi_gene_report_lists_every_gene():
         _tpmt("normal_function.vcf", "HG002"),
         _dpyd("normal_function.vcf", "HG002"),
         _slco1b1("normal_function.vcf", "HG002"),
+        _cyp2c19("normal_function.vcf", "HG002"),
     )
     rep = report.build_report(results)
     payload = json.loads(report.to_json(rep))
-    assert [g["gene"] for g in payload["genes"]] == ["TPMT", "DPYD", "SLCO1B1"]
+    # Phase 8: report.py needed zero code changes to support a fourth gene --
+    # build_report()/to_json() are driven entirely by each PGxResult's own
+    # `gene` field, not a hardcoded gene list (see report.py's _gene_section).
+    assert [g["gene"] for g in payload["genes"]] == ["TPMT", "DPYD", "SLCO1B1", "CYP2C19"]
+
+
+def test_json_report_gene_section_matches_supported_cyp2c19_result():
+    result = _cyp2c19("compound_star2_star17.vcf")
+    rep = report.build_report((result,))
+    payload = json.loads(report.to_json(rep))
+    gene = payload["genes"][0]
+    assert gene["gene"] == "CYP2C19"
+    assert gene["allele_diplotype_interpretation"]["diplotype"] == "*2/*17"
+    assert gene["predicted_phenotype"]["phenotype"] == "Intermediate Metabolizer"
+    assert gene["predicted_phenotype"]["confidence"] == "supported"
+    assert len(gene["interpretation_notes"]) == 1
 
 
 # --- to_tsv(): tabular summary only ---
@@ -282,10 +305,15 @@ def test_html_report_escapes_disclaimer_quotes_safely():
 
 
 def test_html_report_multi_gene_includes_every_gene_section():
-    results = (_tpmt("normal_function.vcf", "HG002"), _slco1b1("normal_function.vcf", "HG002"))
+    results = (
+        _tpmt("normal_function.vcf", "HG002"),
+        _slco1b1("normal_function.vcf", "HG002"),
+        _cyp2c19("normal_function.vcf", "HG002"),
+    )
     rep = report.build_report(results)
     document = report.to_html(rep)
-    assert document.count('<section class="gene-section">') == 2
+    assert document.count('<section class="gene-section">') == 3
+    assert "CYP2C19" in document
 
 
 # --- to_markdown(): same 10 sections, stdlib-only, no optional dependency ---
@@ -335,11 +363,16 @@ def test_markdown_report_no_recommendation_is_explicit_not_omitted():
 
 
 def test_markdown_report_multi_gene_separates_sections():
-    results = (_tpmt("normal_function.vcf", "HG002"), _dpyd("normal_function.vcf", "HG002"))
+    results = (
+        _tpmt("normal_function.vcf", "HG002"),
+        _dpyd("normal_function.vcf", "HG002"),
+        _cyp2c19("normal_function.vcf", "HG002"),
+    )
     rep = report.build_report(results)
     document = report.to_markdown(rep)
     assert document.count("## TPMT") == 1
     assert document.count("## DPYD") == 1
+    assert document.count("## CYP2C19") == 1
     assert "---" in document  # gene sections are separated
 
 

@@ -103,3 +103,37 @@ See `pgx_interpreter/genes/slco1b1.py`'s module docstring for full Tier 1 citati
 **Tier 2 (drug recommendation, Phase 5):** simvastatin, via `pgx_interpreter/evidence.py`, guideline `PA166105005` — CPIC's 2022 Update "Table 1: Recommended dosing of simvastatin based on SLCO1B1 phenotype", fetched directly from ClinPGx's live API. This module's three producible phenotype tiers all map cleanly: Normal function → desired starting dose (Strong); Decreased function → alternative statin, or simvastatin limited to <20mg/day if warranted (Strong); Poor function → alternative statin, no simvastatin dose-cap fallback given by CPIC for this tier so none is invented here (Strong). "Possible decreased function" and "Increased function" are out of scope (documented above) and this module can never produce them, so no Tier 2 entries exist for them either.
 
 See `pgx_interpreter/evidence.py`'s module docstring for the full Tier 2 citation and design rationale (why the embedded HTML dosing tables aren't parsed programmatically, and why `recommend()` is a separate step from `call_slco1b1`).
+
+## CYP2C19 (Phase 8)
+
+**Model:** direct diplotype lookup, like TPMT — not activity-score summation like DPYD. `activity_score` stays `None` throughout this module. CPIC's own CYP2C19 materials describe phenotype categories via worked diplotype examples, not a numeric per-allele score table (unlike CYP2D6's later activity-score system); this module matches what was actually verified against real sources, not an assumed CYP2D6-style model.
+
+**Alleles recognized:** `*1` (reference), `*2` and `*3` (no function), `*17` (increased function) — the "core four" CPIC uses for its classic diplotype-to-phenotype table and what most real clinical CYP2C19 genotyping panels actually test. Rarer no/decreased-function alleles (`*4`, `*5`, `*6`, `*8`, `*9`, `*10`, ...) are out of scope; an unrecognized pattern falls through to `unsupported_allele` rather than being silently mis-called.
+
+**Defining variants** (GRCh38, confirmed directly against dbSNP 2026-08-18; CYP2C19 is plus-strand, so genomic REF>ALT matches the c.DNA notation directly):
+
+| Allele | rsID | Position (chr10) | REF>ALT | Function (CPIC 2022) |
+|---|---|---|---|---|
+| *2 | rs4244285 | 94,781,859 | G>A | No function |
+| *3 | rs4986893 | 94,780,653 | G>A | No function |
+| *17 | rs12248560 | 94,761,900 | C>T | Increased function |
+
+**Phenotype evidence:** CPIC (2022) CYP2C19/clopidogrel guideline, Table 1 (the same table used by CPIC's SSRI, PPI, and voriconazole CYP2C19 guidelines) — `*17/*17` → Ultrarapid Metabolizer; `*1/*17` → Rapid Metabolizer; `*1/*1` → Normal Metabolizer; `*1/*2`, `*1/*3`, `*2/*17`, `*3/*17` → Intermediate Metabolizer; `*2/*2`, `*2/*3`, `*3/*3` → Poor Metabolizer.
+
+**The genuinely new architectural question this gene answers (Architecture Review 1 §6):** CYP2C19 is a third calling-logic shape, distinct from both TPMT/SLCO1B1's "two linked SNPs on one haplotype block" dosage table and DPYD's "four independent loci, decline whenever more than one is simultaneously non-reference" model. CYP2C19 has three independent, single-SNP-defined loci (`*2`, `*3`, `*17`), and — unlike DPYD's equivalent situation — double-heterozygosity across two of them is resolved directly to a compound diplotype rather than declined. This is evidence-based, not an inconsistency with DPYD's more conservative choice:
+
+- DPYD declines because cis vs. trans genuinely changes the reported activity score for a real locus pair (e.g. `*2A` het + `*13` het: cis → score 1.0/Intermediate; trans → score 0/Poor).
+- For CYP2C19's `*2`/`*17` pair, cis vs. trans does **not** change the reported category: a hypothetical same-chromosome double mutant would still behave as functionally null (a promoter variant cannot rescue a mis-spliced transcript), landing in the same Intermediate Metabolizer category CPIC's table already assigns to the standard trans call.
+- For `*2`/`*3`, no compound star allele combining these two SNPs in cis exists in PharmVar's nomenclature (unlike TPMT's `*3A`, which PharmVar explicitly defines as `*3B`+`*3C`-in-cis, creating a genuine competing interpretation). The field's own literature treats compound heterozygosity at these independent no-function loci as a direct, unflagged Poor Metabolizer classification (Frontiers in Pharmacology 2024 review: "Individuals classified as poor metabolizers are either homozygous or compound heterozygous for 2 loss-of-function alleles (for example, `*2/*2`, `*2/*3`)").
+- Independent population-genetics confirmation for `*2`/`*17` specifically: a Nordic haplotype study (Sim et al. 2010, PubMed 20665013) found `*17` co-occurs with wild-type `*1` at the `*2` locus in 99.7% of `*17`-carrying haplotypes.
+
+**Acknowledged, real limitation:** this module still assumes double-heterozygosity across two of these three loci means "one variant per chromosome," which cannot be strictly distinguished from an exceptionally rare true same-chromosome double mutant without external phasing — the same accepted simplification real clinical CYP2C19 genotyping panels operate under. A genuine contradiction (combined non-reference dosage exceeding what two chromosomes can carry, e.g. `*2` homozygous together with any variant at `*3` or `*17`) is not covered by this reasoning and is correctly reported as `unsupported_allele`.
+
+### Known limitations (deliberate, not oversights)
+
+- **Only 4 of PharmVar's 39-plus defined CYP2C19 star alleles are recognized** — the same "well-tested clinically actionable subset" scoping decision made for TPMT, DPYD, and SLCO1B1.
+- **Double-heterozygosity across two of the three independent loci is resolved directly, not declined** — see the evidence-based reasoning above. A genuine dosage contradiction (more non-reference alleles than two chromosomes can carry) is still correctly declined as `unsupported_allele`.
+- **VCF phase information and multi-allelic ALT fields** have the same limitations documented for TPMT, DPYD, and SLCO1B1.
+- **Tier 2 (drug recommendation) is not wired up this phase.** Phase 8's deliverable (Plan §5) is Layers 2-3 only (allele/diplotype → phenotype); extending `pgx_interpreter/evidence.py` for CYP2C19 + clopidogrel, mirroring Phase 5's TPMT/DPYD/SLCO1B1 work, is real follow-up work, not an oversight — see `HANDOFF.md`.
+
+See `pgx_interpreter/genes/cyp2c19.py`'s module docstring for the full reasoning, citations, and per-locus dosage-contradiction check.
