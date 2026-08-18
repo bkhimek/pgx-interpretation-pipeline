@@ -23,5 +23,14 @@ docx = [
     "python-docx>=1.1",
 ]
 
+# Phase 9: optional convenience so `pgx-interpreter report ...` works
+# directly after `pip install -e .`, without needing `python3 -m
+# pgx_interpreter.cli` or a manually-set PYTHONPATH. main.nf itself still
+# invokes the module form directly (PYTHONPATH=<projectDir> python3 -m
+# pgx_interpreter.cli ...) so a real run never depends on this package
+# actually being installed -- see main.nf's own header comment.
+[project.scripts]
+pgx-interpreter = "pgx_interpreter.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["pgx_interpreter*"]

@@ -1,0 +1,4 @@
+sample_id,vcf
+DEMO_ALL_NORMAL,assets/example_sample_all_normal.vcf
+DEMO_TPMT_PARTIAL_COVERAGE,tests/fixtures/tpmt/normal_function.vcf
+DEMO_TPMT_AMBIGUOUS,tests/fixtures/tpmt/star3a_unphased_ambiguous.vcf

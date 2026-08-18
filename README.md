@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** Four genes fully implemented end to end — TPMT, DPYD, SLCO1B1, CYP2C19 — each going from VCF all the way to a rendered report with a drug recommendation attached (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML/Markdown/docx report), and each validated against real GeT-RM (CDC) reference-material samples (31 samples total across all four genes, all exact matches or correctly-declined ambiguous/multi-locus cases — see `docs/VALIDATION.md`). CYP2C19 (Phase 8) answers Architecture Review 1's own closing question (§6) by being a genuinely third calling-logic shape — three independent single-SNP loci where double-heterozygosity is resolved directly to a compound diplotype rather than declined, backed by real population-genetics and nomenclature evidence (see `docs/GENE_SCOPE.md`); a real GeT-RM sample (GM17203, `*2/*17`) independently confirms this design choice against an actual laboratory consensus call. `pgx_interpreter/report.py` needed zero code changes to support the fourth gene, since it's driven entirely by each result's own `gene` field rather than a hardcoded list. CYP2C19's Tier 2 evidence (clopidogrel, via `pgx_interpreter/evidence.py`) implements only the real guideline's cardiovascular/ACS-PCI recommendation table — a documented scoping decision, since the source guideline also publishes a separate neurovascular table this project doesn't attempt to fold into one field. SLCO1B1's own GeT-RM retry succeeded (9 samples, including two real confirmations of its flagship unphased-ambiguity behavior), closing the last open reference-material gap from Phase 7. A PharmCAT comparison was documented against its own published methodology (a live run was attempted and found infeasible in this sandbox — see `docs/VALIDATION.md` §4). See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and known limitations.
+**Status:** All four v1 genes — TPMT, DPYD, SLCO1B1, CYP2C19 — are fully implemented end to end (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML/Markdown/docx report) and validated against 31 real GeT-RM (CDC) reference-material samples (see `docs/VALIDATION.md`). Phase 9 adds runnable orchestration on top: `pgx_interpreter/cli.py` (a `report` subcommand wrapping Layers 1-4 + report rendering into one command) and `main.nf` (a Nextflow DSL2 pipeline that fans that CLI call out across a samplesheet of samples, with the usual per-process isolation/retry/resume). The underlying CLI is directly tested via real subprocess invocations (`tests/test_cli.py`, 9 tests) and was manually verified against every row of `assets/samplesheet_example.csv` — the exact commands `main.nf`'s process would run; a live `nextflow run` was not executed in this sandbox, since the Nextflow launcher's own binary download is blocked by the same network allowlist that blocks PharmCAT's (see `main.nf`'s header comment). CYP2C19 (Phase 8) answers Architecture Review 1's own closing question (§6) by being a genuinely third calling-logic shape — three independent single-SNP loci where double-heterozygosity is resolved directly to a compound diplotype rather than declined, backed by real population-genetics and nomenclature evidence (see `docs/GENE_SCOPE.md`); a real GeT-RM sample (GM17203, `*2/*17`) independently confirms this design choice against an actual laboratory consensus call. A PharmCAT comparison was documented against its own published methodology (a live run was attempted and found infeasible in this sandbox — see `docs/VALIDATION.md` §4). See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and known limitations.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -52,11 +52,16 @@ Evidence is fetched via a versioned adapter (fetch → validate → stamp with r
 
 ## Repository structure
 
-Current state (Phase 8). The full target layout — `main.nf` (Phase 9) — is Plan §6; not reproduced here to avoid this file drifting out of sync with what's actually implemented as phases land.
+Current state (Phase 9).
 
 ```text
 pgx-interpretation-pipeline/
 ├── .github/workflows/ci.yml
+├── assets/
+│   ├── samplesheet_example.csv # Phase 9: main.nf demo input, points at real fixtures below
+│   └── example_sample_all_normal.vcf
+├── conf/
+│   └── base.config             # Phase 9: per-process resource directives
 ├── data/README.md              # explains external data sources, none bundled raw
 ├── docs/
 │   ├── PGX_FOUNDATIONS.md
@@ -71,6 +76,7 @@ pgx-interpretation-pipeline/
 │   ├── evidence.py             # Phase 5: Tier 2 fetch/validate/stamp/cache adapter + recommend()
 │   ├── report.py               # Phase 6: report assembly, sections 1-10, 5 renderers
 │   │                           #   (JSON/TSV/HTML/Markdown stdlib-only; docx needs [docx] extra)
+│   ├── cli.py                  # Phase 9: `report` subcommand -- the one thing main.nf shells out to
 │   └── genes/
 │       ├── _shared.py          # gene-agnostic zygosity vocabulary, extracted post-Review-1
 │       ├── tpmt.py
@@ -87,6 +93,7 @@ pgx-interpretation-pipeline/
 │   ├── test_cyp2c19.py         # Phase 8
 │   ├── test_evidence.py
 │   ├── test_report.py
+│   ├── test_cli.py             # Phase 9: real subprocess invocations of the CLI, 9 tests
 │   ├── test_getrm_validation.py  # Phase 7: real GeT-RM reference-material cross-validation
 │   ├── fixtures/normalize/     # 5 VCF fixtures, Layer-1-only
 │   ├── fixtures/tpmt/          # 7 VCF fixtures
@@ -95,6 +102,8 @@ pgx-interpretation-pipeline/
 │   ├── fixtures/cyp2c19/       # 14 VCF fixtures
 │   ├── fixtures/evidence/      # 4 real ClinPGx guideline-annotation payloads, network-free tests
 │   └── fixtures/getrm/         # 31 real GeT-RM sample fixtures (tpmt/, dpyd/, cyp2c19/, slco1b1/), see docs/VALIDATION.md
+├── main.nf                     # Phase 9: Nextflow DSL2 orchestration, one process per sample
+├── nextflow.config             # Phase 9: params, manifest, `standard` (local) profile
 ├── pyproject.toml
 ├── LICENSE                     # MIT — this project's own code
 ├── THIRD_PARTY_DATA.md
@@ -112,6 +121,30 @@ PYTHONPATH=. python3 tests/run_tests.py  # dependency-free fallback, always work
 ```
 
 `tests/run_tests.py` reports `SKIP` (not `FAIL`) for tests that need an optional dependency that isn't installed — currently just `to_docx()`'s tests, which need `pip install -e .[docx]`. This is the same mechanism pytest itself uses (`unittest.SkipTest`), so both runners treat it identically.
+
+### Running the pipeline
+
+Directly, for one sample, via the CLI (no Nextflow needed):
+
+```bash
+PYTHONPATH=. python3 -m pgx_interpreter.cli report \
+    --vcf assets/example_sample_all_normal.vcf \
+    --sample-id DEMO001 \
+    --formats json,tsv,html,markdown \
+    --evidence-cache-dir tests/fixtures/evidence \
+    --out-dir results/DEMO001
+```
+
+(Drop `--evidence-cache-dir tests/fixtures/evidence` to fetch live ClinPGx guidance instead of the repo's cached fixture snapshots — see `pgx_interpreter/evidence.py`.)
+
+Across a batch of samples, via Nextflow (requires `nextflow` and Java 17+ on `PATH` — see `main.nf`'s own header comment for why this hasn't been run inside the Cowork sandbox itself):
+
+```bash
+nextflow run main.nf --input assets/samplesheet_example.csv \
+    --evidence_cache_dir tests/fixtures/evidence
+```
+
+`main.nf --help` lists every parameter (genome build, gene list, output formats, output directory, whether to attach Tier 2 recommendations).
 
 ## License
 
