@@ -39,6 +39,7 @@ Not a validated clinical diagnostic system, not an autonomous prescribing system
 - `docs/GENE_SCOPE.md` — per-gene allele coverage, defining variants, and explicit known limitations
 - `docs/ARCHITECTURE_REVIEW_V01.md` — Architecture Review 1 (after TPMT + DPYD + SLCO1B1): what's universal vs. gene-specific, what schema fields turned out unused, and a concrete refactor recommendation for CYP2C19
 - `docs/VALIDATION.md` — Phase 7: unit test coverage review, real GeT-RM reference-material cross-validation (all four genes: TPMT, DPYD, CYP2C19, SLCO1B1), and a documented PharmCAT comparison
+- `docs/PHARMCAT_LIVE_COMPARISON_RUNBOOK.md` — exact steps to run a live PharmCAT comparison on a machine with real network access, since the Cowork sandbox this project was built in cannot (see `docs/VALIDATION.md` §4's infeasibility note)
 
 ## Architecture
 
