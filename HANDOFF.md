@@ -684,3 +684,27 @@ The closure defers evaluation of the path string until each task actually runs, 
 1. Sync this batch (`./sync_batch.sh`), review the diff, commit, push.
 2. If the user has PharmCAT results to share, work through the real Section 4 write-up for `docs/VALIDATION.md` together, sample by sample.
 3. Otherwise, natural next steps in priority order: NUDT15 GeT-RM validation (closes the one real gap this session left open, mirroring the exact process already done for TPMT/DPYD/SLCO1B1/CYP2C19); then CYP2C19+voriconazole or another CYP2C19-guideline drug pairing (CYP2C19's existing Tier 1 logic already supports it, only Tier 2 evidence would need fetching); then v2 scope planning (CYP2D6 feasibility writeup, container/Conda profile for `main.nf`) as lower priority, per Session 18's roadmap.
+
+---
+
+## 2026-08-19 — Session 20 (NUDT15 GeT-RM validation)
+
+**What happened:** the user picked NUDT15 GeT-RM validation, the top-priority next step from Session 19's own list.
+
+**Research:** the joint TPMT+NUDT15 GeT-RM paper already cited for TPMT (Pratt VM et al. 2022, PMID 35850928) turned out to have a dedicated NUDT15 table (Table 2) in the same CDC PDF already fetched and cited for TPMT in Phase 7 -- no new source needed, just a re-read of a document already in this project's citation trail.
+
+**A real design question worked through before writing any fixtures:** every prior gene's GeT-RM validation strictly excluded samples carrying out-of-scope alleles (the plan's own "don't claim a locus is benchmarked unless the reference truth set supports it" rule). For NUDT15, two of the twelve real samples in Table 2 carry alleles (`*5`, `*4`) this module's one-locus scope cannot see at all. Rather than excluding them by the same rule, they were deliberately INCLUDED -- reasoned through as a genuine exception, not a rule violation: `genes/nudt15.py`'s own module docstring already predicts, in prose, exactly what this module does when it can't see `*5`/`*4`. Including real samples carrying those alleles lets that prediction be checked against actual reference data rather than left as an assertion -- the same "prove the documented gap is real" discipline DPYD's HG00118 case established back in the original Phase 7.
+
+**What was found:** 7 samples total. 5 matched the true GeT-RM consensus phenotype exactly (4 also matched at the diplotype level; `HG00437`, real `*1/*5`, presents as this module's `*1/*1` but is still phenotype-concordant since CPIC classifies both as Normal Metabolizer). The other 2 confirmed the predicted limitations, in two genuinely different flavors: `NA19079` (real `*2/*5`, true Poor Metabolizer) is undercalled as Intermediate Metabolizer -- a real, no-function-adjacent allele goes unseen, understating severity. `HG01359` (real `*1/*4`, true Indeterminate) is overcalled as a confident Normal Metabolizer -- a real uncertain-function allele is silently treated as reference, asserting confidence where the true answer is genuine uncertainty. Both are exactly what the module's own docstring already said would happen, now confirmed against real laboratory consensus data rather than left as a prose claim.
+
+**Delivered:** 7 new VCF fixtures under `tests/fixtures/getrm/nudt15/`, each with a header comment citing the source table and (for the two limitation-exposing samples) explaining the real-world discrepancy in detail; 7 new tests in `tests/test_getrm_validation.py` (38 total in that file now, up from 31), plus an expanded module docstring documenting the deliberate scope-inclusion exception; `docs/VALIDATION.md`'s new NUDT15 subsection (full results table plus the reasoning above) and a closing addendum; `docs/GENE_SCOPE.md`'s NUDT15 section updated from "not yet validated" to the real results; `README.md`'s status line and GeT-RM fixture count updated (38 total, up from 31).
+
+**Verification done this session:** full test suite, both runners -- all passing (38/38 in `test_getrm_validation.py` alone, all new NUDT15 cases passing on the first run against hand-derived expected outcomes). Packaged and verified via a fresh zip extraction + full test re-run + a real CLI smoke test, the same discipline as every prior delivery.
+
+**Not done yet (deliberately deferred, not an oversight):**
+- Whether the `*3.001`-vs-`*3.002` GAGTCG-insertion suballele distinction matters for any GeT-RM sample beyond `HG00599` remains unknown -- the source paper only reports diplotype-level calls, not suballele-level phase. Unchanged from Session 19's own documented limitation, not newly discovered.
+- The PharmCAT live comparison from Session 18 is still pending the user's own run.
+
+**Next session should:**
+1. Sync this batch, review the diff, commit, push.
+2. Natural next steps, per Session 18/19's roadmap: CYP2C19+voriconazole or another CYP2C19-guideline drug pairing; NUDT15 thioguanine/azathioprine compound tables (Tables 3/4, currently out of scope -- see Session 19); v2 scope planning (CYP2D6 feasibility writeup, container/Conda profile for `main.nf`) as lower priority.

@@ -14,26 +14,50 @@ for the full license check this project's Phase 0 gated on before Phase 7.
 Scope discipline (the plan's own explicit requirement): every sample below
 was hand-selected because its GeT-RM consensus diplotype/genotype is
 composed ENTIRELY of star alleles/variants this project's TPMT, DPYD,
-CYP2C19, and SLCO1B1 modules actually define (genes/tpmt.py's four-allele
-scope; genes/dpyd.py's four-locus scope; genes/cyp2c19.py's four-allele
-scope; genes/slco1b1.py's four-allele scope). GeT-RM samples carrying
-alleles outside that scope (TPMT *6/*8/*12/*16/*21/*24/*32/*33/*40/*46;
-DPYD's older 2016-study *4/*9 panel, which does not correspond to this
-project's CPIC-actionable variant set; CYP2C19's *4/*8/*10; SLCO1B1's
-*14/*17/*21 increased-function/other alleles) are correctly NOT claimed as
-benchmarked here -- this project's own modules would report
-`unsupported_allele`/fall outside their documented scope for those, and
-asserting a match against them would not be a meaningful test.
+CYP2C19, SLCO1B1, and NUDT15 modules actually define (genes/tpmt.py's
+four-allele scope; genes/dpyd.py's four-locus scope; genes/cyp2c19.py's
+four-allele scope; genes/slco1b1.py's four-allele scope; genes/nudt15.py's
+one-locus, two-allele scope). GeT-RM samples carrying alleles outside that
+scope (TPMT *6/*8/*12/*16/*21/*24/*32/*33/*40/*46; DPYD's older
+2016-study *4/*9 panel, which does not correspond to this project's
+CPIC-actionable variant set; CYP2C19's *4/*8/*10; SLCO1B1's *14/*17/*21
+increased-function/other alleles) are correctly NOT claimed as benchmarked
+here -- this project's own modules would report `unsupported_allele`/fall
+outside their documented scope for those, and asserting a match against
+them would not be a meaningful test.
+
+**NUDT15 is a deliberate exception to that exclusion rule, not a
+contradiction of it.** genes/nudt15.py's own module docstring documents
+that this module cannot see *5 (decreased function) or *4 (uncertain
+function) at all -- they don't carry the one substitution (R139C) this
+module's single-locus scope checks. Two real GeT-RM samples carrying
+those exact alleles (NA19079 = *2/*5, HG01359 = *1/*4) are included below
+specifically to confirm that documented limitation is real, reachable
+behavior against actual reference data, not just an assertion -- the same
+"prove the documented gap with a real sample" discipline already used for
+DPYD's HG00118. These two tests assert the (scope-limited, and in
+HG01359's case genuinely incorrect relative to the true consensus
+phenotype) output this module actually produces, not the true GeT-RM
+consensus -- see each test's own comment and docs/VALIDATION.md.
 
 Fixture provenance: each VCF under
-tests/fixtures/getrm/{tpmt,dpyd,cyp2c19,slco1b1}/ is named by its Coriell
-sample ID and documents its own GeT-RM source (publication, table,
+tests/fixtures/getrm/{tpmt,dpyd,cyp2c19,slco1b1,nudt15}/ is named by its
+Coriell sample ID and documents its own GeT-RM source (publication, table,
 retrieval method) in its header comments. Genotypes were reconstructed from
 this project's own dbSNP-confirmed defining-variant coordinates (already
-established in genes/tpmt.py, genes/dpyd.py, genes/cyp2c19.py, and
-genes/slco1b1.py) paired with the real GeT-RM consensus call for each
-sample -- not redistributed verbatim from CDC/Coriell's own data
-tables/tool output.
+established in genes/tpmt.py, genes/dpyd.py, genes/cyp2c19.py,
+genes/slco1b1.py, and genes/nudt15.py) paired with the real GeT-RM
+consensus call for each sample -- not redistributed verbatim from
+CDC/Coriell's own data tables/tool output.
+
+A note specific to the NUDT15 samples: Pratt et al. 2022 (the same paper
+already cited for TPMT above) is a joint TPMT+NUDT15 GeT-RM study, with a
+dedicated NUDT15 table (Table 2). Pre-2025-nomenclature *2 (this study's
+own terminology) = PharmVar's current consolidated *3 (suballele *3.002)
+-- both carry R139C, the one substitution genes/nudt15.py checks, so this
+project's *3 call is correct at the phenotype level for those samples even
+though it cannot resolve the *3.001-vs-*3.002 suballele distinction (see
+genes/nudt15.py's module docstring).
 
 A note specific to the SLCO1B1 samples: unlike TPMT/DPYD/CYP2C19 (which
 have per-gene CDC PDF consensus tables), SLCO1B1 is only covered by the
@@ -74,6 +98,7 @@ from pathlib import Path
 
 from pgx_interpreter.genes.cyp2c19 import call_cyp2c19
 from pgx_interpreter.genes.dpyd import call_dpyd
+from pgx_interpreter.genes.nudt15 import call_nudt15
 from pgx_interpreter.genes.slco1b1 import call_slco1b1
 from pgx_interpreter.genes.tpmt import call_tpmt
 from pgx_interpreter.models import GenomeBuild
@@ -83,6 +108,7 @@ TPMT_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "tpmt"
 DPYD_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "dpyd"
 CYP2C19_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "cyp2c19"
 SLCO1B1_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "slco1b1"
+NUDT15_DIR = Path(__file__).resolve().parent / "fixtures" / "getrm" / "nudt15"
 
 
 def _call_tpmt(coriell_id: str):
@@ -103,6 +129,11 @@ def _call_cyp2c19(coriell_id: str):
 def _call_slco1b1(coriell_id: str):
     variants = parse_vcf(SLCO1B1_DIR / f"{coriell_id}.vcf", GenomeBuild.GRCH38)
     return call_slco1b1(variants, sample_id=coriell_id, genome_build=GenomeBuild.GRCH38)
+
+
+def _call_nudt15(coriell_id: str):
+    variants = parse_vcf(NUDT15_DIR / f"{coriell_id}.vcf", GenomeBuild.GRCH38)
+    return call_nudt15(variants, sample_id=coriell_id, genome_build=GenomeBuild.GRCH38)
 
 
 # --- TPMT: 6 GeT-RM samples (Pratt et al. 2022, J Mol Diagn 24:1079-1088) ---
@@ -391,3 +422,90 @@ def test_getrm_NA06993_star1_star15_correctly_reported_ambiguous_without_externa
     assert d["confidence"] == "ambiguous"
     assert d["diplotype"] == "*1/*15"
     assert d["alternative_diplotypes"] == ["*37/*5"]
+
+
+# --- NUDT15: 7 GeT-RM samples (Pratt et al. 2022, J Mol Diagn 24:1079-1088, Table 2) ---
+
+
+def test_getrm_HG00599_matches_consensus_star2_star2_as_consolidated_star3_star3():
+    # Pre-2025-nomenclature *2/*2 (both copies carry R139C + the insertion)
+    # -> this module's consolidated *3/*3 (see genes/nudt15.py). Phenotype
+    # (Poor Metabolizer, two no-function alleles) matches the real
+    # consensus exactly; only the suballele-level identity is unresolved
+    # (documented, not silently dropped).
+    d = _call_nudt15("HG00599").to_dict()
+    assert d["diplotype"] == "*3/*3"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Poor Metabolizer"
+
+
+def test_getrm_HG00524_matches_consensus_star3_star3():
+    d = _call_nudt15("HG00524").to_dict()
+    assert d["diplotype"] == "*3/*3"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Poor Metabolizer"
+
+
+def test_getrm_NA18992_matches_consensus_star1_star3():
+    d = _call_nudt15("NA18992").to_dict()
+    assert d["diplotype"] == "*1/*3"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Intermediate Metabolizer"
+
+
+def test_getrm_NA18564_matches_consensus_star1_star3():
+    # Second, independent *1/*3 confirmation from a different real sample
+    # than NA18992.
+    d = _call_nudt15("NA18564").to_dict()
+    assert d["diplotype"] == "*1/*3"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Intermediate Metabolizer"
+
+
+def test_getrm_HG00437_star1_star5_reports_star1_star1_but_the_phenotype_is_still_correct():
+    # *5 (decreased function) is out of this module's one-locus scope --
+    # it does not carry R139C, so it is invisible here. This module reports
+    # *1/*1 (the honest reflection of what it can actually see at the one
+    # position it checks), which is an incomplete diplotype relative to the
+    # true *1/*5 consensus. The PHENOTYPE conclusion is nonetheless correct:
+    # CPIC's Table 1 classifies *1/*5 as Normal Metabolizer, the same tier
+    # *1/*1 maps to (see genes/nudt15.py's module docstring, HG00437.vcf's
+    # header comment, and docs/VALIDATION.md).
+    d = _call_nudt15("HG00437").to_dict()
+    assert d["diplotype"] == "*1/*1"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Normal Metabolizer"  # phenotype-concordant despite the incomplete diplotype
+
+
+def test_getrm_NA19079_star2_star5_exposes_a_real_undercalled_severity_limitation():
+    # A genuine, non-hypothetical GeT-RM sample where this module's
+    # documented *5-blindness produces a WRONG phenotype, not just an
+    # incomplete diplotype. True consensus: *2/*5 (Poor Metabolizer, per
+    # CPIC's no-function + decreased-function rule). This module can only
+    # see the R139C-heterozygous state contributed by *2 -- it reports
+    # *1/*3, Intermediate Metabolizer, undercalling the real severity
+    # because the unmodeled *5 allele is invisible to it. Confirms
+    # genes/nudt15.py's documented one-locus scope limitation is real,
+    # reachable behavior against actual reference data -- the same
+    # "prove the documented gap with a real sample" discipline as DPYD's
+    # HG00118 test above. See docs/VALIDATION.md for the full discussion.
+    d = _call_nudt15("NA19079").to_dict()
+    assert d["diplotype"] == "*1/*3"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Intermediate Metabolizer"  # true consensus is Poor Metabolizer -- see above
+
+
+def test_getrm_HG01359_star1_star4_exposes_a_real_unwarranted_confidence_limitation():
+    # A second, differently-shaped real limitation: *4 is an
+    # uncertain/unknown-function allele that also doesn't carry R139C, so
+    # it too is invisible to this module. True consensus phenotype for
+    # *1/*4 is Indeterminate (CPIC Table 1: normal + uncertain/unknown).
+    # This module instead reports a specific, confident Normal Metabolizer
+    # conclusion -- arguably more concerning than NA19079's undercalled-
+    # severity case, since it asserts confidence where the true answer is
+    # genuine uncertainty, rather than merely understating severity. See
+    # HG01359.vcf's header comment and docs/VALIDATION.md.
+    d = _call_nudt15("HG01359").to_dict()
+    assert d["diplotype"] == "*1/*1"
+    assert d["confidence"] == "supported"
+    assert d["phenotype"] == "Normal Metabolizer"  # true consensus phenotype is Indeterminate -- see above

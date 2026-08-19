@@ -1,0 +1,29 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr13>
+# GeT-RM reference material, Coriell ID HG00437 (Chinese Dai in
+# Xishuangbanna, China, 1000 Genomes). GeT-RM consensus diplotype: *1/*5
+# (1/1 labs tested; data carried forward from the previous 2016 GeT-RM
+# study). Source: Pratt VM et al., "Characterization of Reference
+# Materials for TPMT and NUDT15: A GeT-RM Collaborative Project." J Mol
+# Diagn 2022;24:1079-1088 (PMID 35850928), Table 2, as reproduced in CDC's
+# public-domain data table
+# (https://www.cdc.gov/lab-quality/media/pdfs/2024/08/TPMT-and-NUDT15-reference-materials_508C.pdf,
+# retrieved 2026-08-19). Genotype below constructed from this project's own
+# dbSNP-confirmed defining-variant coordinate (genes/nudt15.py), not
+# redistributed from GeT-RM/Coriell/CDC directly.
+#
+# A genuinely interesting "right phenotype, incomplete diplotype" case, not
+# constructed to be interesting: *5 (decreased function) is out of this
+# module's one-locus scope entirely -- it doesn't carry the R139C
+# substitution this module checks, so this sample presents as homozygous
+# reference at the one position checked, and this module calls *1/*1. That
+# happens to be phenotype-concordant here: CPIC's own Table 1 classifies
+# *1/*5 as Normal Metabolizer (one normal + one decreased-function allele),
+# the same tier *1/*1 maps to. The diplotype label this module reports is
+# incomplete (it cannot know about *5 at all), but the phenotype conclusion
+# is correct for this specific sample. See docs/VALIDATION.md and contrast
+# with NA19079.vcf, where the same *5-blindness produces a genuinely wrong
+# phenotype.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr13	48045719	rs116855232	C	T	99	PASS	.	GT	0/0
