@@ -42,7 +42,7 @@ def _run_cli(args: list, cwd: Path = REPO_ROOT) -> subprocess.CompletedProcess:
     )
 
 
-def test_report_all_four_genes_normal_with_recommendations():
+def test_report_all_five_genes_normal_with_recommendations():
     with tempfile.TemporaryDirectory() as tmp:
         out_dir = Path(tmp)
         result = _run_cli(
@@ -62,18 +62,25 @@ def test_report_all_four_genes_normal_with_recommendations():
 
         payload = json.loads((out_dir / "DEMO001.json").read_text())
         genes = {g["gene"] for g in payload["genes"]}
-        assert genes == {"TPMT", "DPYD", "SLCO1B1", "CYP2C19"}
+        assert genes == {"TPMT", "DPYD", "SLCO1B1", "CYP2C19", "NUDT15"}
         for section in payload["genes"]:
             assert section["predicted_phenotype"]["confidence"] == "supported"
             # Every gene should have a Tier 2 recommendation attached, since
             # the evidence cache has all four guidelines and every phenotype
             # here is a "Normal"/"Normal function" call this project's
-            # recommendation tables recognize.
+            # recommendation tables recognize. TPMT+NUDT15 get theirs via
+            # the compound path (both genes present in the default --genes
+            # list) -- see evidence.recommend_compound_thiopurine().
             assert section["gene_drug_relationship"]["drug"] is not None
 
+        by_gene = {g["gene"]: g for g in payload["genes"]}
+        assert by_gene["TPMT"]["gene_drug_relationship"]["drug"] == "mercaptopurine"
+        assert by_gene["NUDT15"]["gene_drug_relationship"]["drug"] == "mercaptopurine"
+        assert by_gene["TPMT"]["gene_drug_relationship"] == by_gene["NUDT15"]["gene_drug_relationship"]
+
         rows = list(csv.DictReader(io.StringIO((out_dir / "DEMO001.tsv").read_text()), delimiter="\t"))
-        assert len(rows) == 4
-        assert {r["gene"] for r in rows} == {"TPMT", "DPYD", "SLCO1B1", "CYP2C19"}
+        assert len(rows) == 5
+        assert {r["gene"] for r in rows} == {"TPMT", "DPYD", "SLCO1B1", "CYP2C19", "NUDT15"}
 
 
 def test_report_single_gene_subset():
@@ -211,6 +218,57 @@ def test_ambiguous_phenotype_correctly_gets_no_recommendation():
         section = payload["genes"][0]
         assert section["predicted_phenotype"]["confidence"] == "ambiguous"
         assert section["gene_drug_relationship"]["drug"] is None
+
+
+def test_nudt15_requested_alone_gets_no_recommendation_no_tpmt_to_pair_with():
+    # A real, documented limitation, not a bug: CPIC's dosing tables are
+    # keyed on the joint TPMT+NUDT15 phenotype, so a NUDT15-only report has
+    # no confident recommendation to attach -- see
+    # evidence.recommend_compound_thiopurine()'s and genes/nudt15.py's own
+    # docstrings.
+    nudt15_normal_vcf = REPO_ROOT / "tests" / "fixtures" / "nudt15" / "normal_function.vcf"
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(tmp)
+        result = _run_cli(
+            [
+                "report",
+                "--vcf", str(nudt15_normal_vcf),
+                "--sample-id", "NUDT15_ONLY",
+                "--genes", "NUDT15",
+                "--formats", "json",
+                "--evidence-cache-dir", str(EVIDENCE_CACHE_DIR),
+                "--out-dir", str(out_dir),
+            ]
+        )
+        assert result.returncode == 0, result.stderr
+        payload = json.loads((out_dir / "NUDT15_ONLY.json").read_text())
+        assert payload["genes"][0]["predicted_phenotype"]["confidence"] == "supported"
+        assert payload["genes"][0]["gene_drug_relationship"]["drug"] is None
+
+
+def test_tpmt_and_nudt15_together_get_the_compound_recommendation():
+    # Confirms the compound path is reachable through a real subprocess
+    # invocation, not just through evidence.py's own unit tests -- the same
+    # "at least one real end-to-end check per code path" discipline as
+    # every other CLI test in this file.
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(tmp)
+        result = _run_cli(
+            [
+                "report",
+                "--vcf", str(ALL_NORMAL_VCF),
+                "--sample-id", "PAIR",
+                "--genes", "TPMT,NUDT15",
+                "--formats", "json",
+                "--evidence-cache-dir", str(EVIDENCE_CACHE_DIR),
+                "--out-dir", str(out_dir),
+            ]
+        )
+        assert result.returncode == 0, result.stderr
+        payload = json.loads((out_dir / "PAIR.json").read_text())
+        by_gene = {g["gene"]: g for g in payload["genes"]}
+        assert by_gene["TPMT"]["gene_drug_relationship"]["drug"] == "mercaptopurine"
+        assert by_gene["NUDT15"]["gene_drug_relationship"]["drug"] == "mercaptopurine"
 
 
 def test_written_file_paths_are_printed_to_stdout():

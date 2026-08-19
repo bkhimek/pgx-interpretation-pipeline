@@ -29,9 +29,15 @@ tests/run_tests.py (DEVELOPMENT_WORKFLOW.md item 2).
 """
 from pathlib import Path
 
-from pgx_interpreter.evidence import EvidenceFetchError, fetch_guideline, recommend
+from pgx_interpreter.evidence import (
+    EvidenceFetchError,
+    fetch_guideline,
+    recommend,
+    recommend_compound_thiopurine,
+)
 from pgx_interpreter.genes.cyp2c19 import call_cyp2c19
 from pgx_interpreter.genes.dpyd import call_dpyd
+from pgx_interpreter.genes.nudt15 import call_nudt15
 from pgx_interpreter.genes.slco1b1 import call_slco1b1
 from pgx_interpreter.genes.tpmt import call_tpmt
 from pgx_interpreter.models import GenomeBuild, ObservedVariant
@@ -43,6 +49,7 @@ FIXTURES_TPMT_DIR = Path(__file__).resolve().parent / "fixtures" / "tpmt"
 FIXTURES_DPYD_DIR = Path(__file__).resolve().parent / "fixtures" / "dpyd"
 FIXTURES_SLCO1B1_DIR = Path(__file__).resolve().parent / "fixtures" / "slco1b1"
 FIXTURES_CYP2C19_DIR = Path(__file__).resolve().parent / "fixtures" / "cyp2c19"
+FIXTURES_NUDT15_DIR = Path(__file__).resolve().parent / "fixtures" / "nudt15"
 
 # A cache_dir that provably has nothing in it and cannot be written to by a
 # real fetch attempt reaching the network -- used to prove that ambiguous /
@@ -68,6 +75,11 @@ def _slco1b1(fixture_name: str):
 def _cyp2c19(fixture_name: str):
     variants = parse_vcf(FIXTURES_CYP2C19_DIR / fixture_name, GenomeBuild.GRCH38)
     return call_cyp2c19(variants, sample_id="TEST", genome_build=GenomeBuild.GRCH38)
+
+
+def _nudt15(fixture_name: str, sample_id: str = "TEST"):
+    variants = parse_vcf(FIXTURES_NUDT15_DIR / fixture_name, GenomeBuild.GRCH38)
+    return call_nudt15(variants, sample_id=sample_id, genome_build=GenomeBuild.GRCH38)
 
 
 # --- fetch_guideline: fetch -> validate -> stamp -> cache adapter itself ---
@@ -365,3 +377,103 @@ def test_recommend_leaves_layers_1_through_3_untouched():
     assert after.phenotype == before.phenotype
     assert after.observed_variants == before.observed_variants
     assert after.sample_id == before.sample_id
+
+
+# --- recommend_compound_thiopurine(): TPMT+NUDT15 joint mercaptopurine table ---
+
+
+def test_compound_both_normal_metabolizer_is_standard_dose():
+    tpmt = _tpmt("normal_function.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, nudt15_after = recommend_compound_thiopurine(tpmt, nudt15, cache_dir=FIXTURES_EVIDENCE_DIR)
+    for result in (tpmt_after, nudt15_after):
+        d = result.to_dict()
+        assert d["recommended_drug"] == "mercaptopurine"
+        assert "standard starting dose" in d["recommendation_category"]
+    # Same RecommendationResult content attached to both, by design.
+    assert tpmt_after.recommendation == nudt15_after.recommendation
+
+
+def test_compound_tpmt_intermediate_nudt15_normal_is_thirty_to_eighty_percent():
+    tpmt = _tpmt("het_reduced_function.vcf")  # TPMT Intermediate Metabolizer
+    nudt15 = _nudt15("normal_function.vcf")  # NUDT15 Normal Metabolizer
+    tpmt_after, nudt15_after = recommend_compound_thiopurine(tpmt, nudt15, cache_dir=FIXTURES_EVIDENCE_DIR)
+    assert "30-80%" in tpmt_after.to_dict()["recommendation_category"]
+    assert "30-80%" in nudt15_after.to_dict()["recommendation_category"]
+
+
+def test_compound_tpmt_normal_nudt15_intermediate_is_also_thirty_to_eighty_percent():
+    # The 30-80% row applies symmetrically -- one gene Intermediate, the
+    # other Normal, in EITHER direction (module docstring's quoted "(either
+    # direction)" reading of Table 2's own row heading).
+    tpmt = _tpmt("normal_function.vcf")
+    nudt15 = _nudt15("het_intermediate.vcf")
+    tpmt_after, nudt15_after = recommend_compound_thiopurine(tpmt, nudt15, cache_dir=FIXTURES_EVIDENCE_DIR)
+    assert "30-80%" in tpmt_after.to_dict()["recommendation_category"]
+
+
+def test_compound_both_intermediate_gets_the_deeper_twenty_to_fifty_percent_reduction():
+    # The real, guideline-stated distinction this compound logic exists
+    # for: compound IM/IM needs MORE reduction than either gene's own
+    # single-gene IM recommendation (30-80%).
+    tpmt = _tpmt("het_reduced_function.vcf")
+    nudt15 = _nudt15("het_intermediate.vcf")
+    tpmt_after, nudt15_after = recommend_compound_thiopurine(tpmt, nudt15, cache_dir=FIXTURES_EVIDENCE_DIR)
+    d = tpmt_after.to_dict()
+    assert "20-50%" in d["recommendation_category"]
+    assert "compound intermediate metabolizer" in d["recommendation_category"].lower()
+
+
+def test_compound_either_poor_metabolizer_gets_the_ten_fold_reduction_regardless_of_the_other_gene():
+    tpmt_pm = _tpmt("two_no_function_alleles.vcf")
+    nudt15_normal = _nudt15("normal_function.vcf")
+    tpmt_after, _ = recommend_compound_thiopurine(tpmt_pm, nudt15_normal, cache_dir=FIXTURES_EVIDENCE_DIR)
+    assert "10-fold" in tpmt_after.to_dict()["recommendation_category"]
+
+    tpmt_normal = _tpmt("normal_function.vcf")
+    nudt15_pm = _nudt15("homozygous_poor.vcf")
+    _, nudt15_after = recommend_compound_thiopurine(tpmt_normal, nudt15_pm, cache_dir=FIXTURES_EVIDENCE_DIR)
+    assert "10-fold" in nudt15_after.to_dict()["recommendation_category"]
+
+
+def test_compound_does_not_attach_or_fetch_when_either_phenotype_is_not_supported():
+    tpmt = _tpmt("missing_genotype.vcf")  # insufficient_data
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, nudt15_after = recommend_compound_thiopurine(
+        tpmt, nudt15, cache_dir=_UNREACHABLE_CACHE_DIR
+    )
+    assert tpmt_after is tpmt
+    assert nudt15_after is nudt15
+    assert tpmt_after.recommendation.drug is None
+    assert nudt15_after.recommendation.drug is None
+
+
+def test_compound_rejects_mismatched_genes():
+    tpmt = _tpmt("normal_function.vcf")
+    other_tpmt = _tpmt("het_reduced_function.vcf")
+    try:
+        recommend_compound_thiopurine(tpmt, other_tpmt, cache_dir=FIXTURES_EVIDENCE_DIR)
+        assert False, "expected a ValueError for a non-NUDT15 second argument"
+    except ValueError as exc:
+        assert "NUDT15" in str(exc)
+
+
+def test_compound_still_reuses_the_same_joint_guideline_as_single_gene_tpmt():
+    # The compound table and the single-gene TPMT table both cite
+    # PA166104933 -- the same real ClinPGx guideline, confirmed directly
+    # (module docstring). Both code paths should therefore report the same
+    # guideline_source string for the same cached snapshot.
+    tpmt = _tpmt("normal_function.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, _ = recommend_compound_thiopurine(tpmt, nudt15, cache_dir=FIXTURES_EVIDENCE_DIR)
+    single_gene_after = recommend(_tpmt("normal_function.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR)
+    assert (
+        tpmt_after.to_dict()["recommendation_guideline_source"]
+        == single_gene_after.to_dict()["recommendation_guideline_source"]
+    )
+    # ...but the recommended drug differs: azathioprine (single-gene table)
+    # vs. mercaptopurine (compound table) -- confirming the compound path
+    # genuinely supersedes the single-gene one when NUDT15 is also present,
+    # rather than accidentally reusing its recommendation text.
+    assert tpmt_after.to_dict()["recommended_drug"] == "mercaptopurine"
+    assert single_gene_after.to_dict()["recommended_drug"] == "azathioprine"

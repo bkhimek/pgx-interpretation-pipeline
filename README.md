@@ -2,7 +2,7 @@
 
 A reproducible pharmacogenomics interpretation workflow that translates selected genomic variants into gene-specific allele/diplotype assignments, predicted functional phenotypes, and guideline-linked pharmacogenomic summaries.
 
-**Status:** All four v1 genes — TPMT, DPYD, SLCO1B1, CYP2C19 — are fully implemented end to end (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML/Markdown/docx report) and validated against 31 real GeT-RM (CDC) reference-material samples (see `docs/VALIDATION.md`). Phase 9 adds runnable orchestration on top: `pgx_interpreter/cli.py` (a `report` subcommand wrapping Layers 1-4 + report rendering into one command) and `main.nf` (a Nextflow DSL2 pipeline that fans that CLI call out across a samplesheet of samples, with the usual per-process isolation/retry/resume). The underlying CLI is directly tested via real subprocess invocations (`tests/test_cli.py`, 9 tests) and was manually verified against every row of `assets/samplesheet_example.csv` — the exact commands `main.nf`'s process would run; a live `nextflow run` was not executed in this sandbox, since the Nextflow launcher's own binary download is blocked by the same network allowlist that blocks PharmCAT's (see `main.nf`'s header comment). CYP2C19 (Phase 8) answers Architecture Review 1's own closing question (§6) by being a genuinely third calling-logic shape — three independent single-SNP loci where double-heterozygosity is resolved directly to a compound diplotype rather than declined, backed by real population-genetics and nomenclature evidence (see `docs/GENE_SCOPE.md`); a real GeT-RM sample (GM17203, `*2/*17`) independently confirms this design choice against an actual laboratory consensus call. A PharmCAT comparison was documented against its own published methodology (a live run was attempted and found infeasible in this sandbox — see `docs/VALIDATION.md` §4). See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and known limitations.
+**Status:** Five genes — TPMT, DPYD, SLCO1B1, CYP2C19, NUDT15 — are implemented end to end (variant → allele/diplotype → phenotype → Tier 2 dosing guidance → JSON/TSV/HTML/Markdown/docx report). The first four are validated against 31 real GeT-RM (CDC) reference-material samples (see `docs/VALIDATION.md`); NUDT15 is not yet (a real, open item, not an oversight — see `docs/GENE_SCOPE.md`). NUDT15 is this project's narrowest-scope gene (one locus, two alleles, no phasing) and its Tier 2 recommendation is the first in this project keyed on two genes' phenotypes at once: `evidence.recommend_compound_thiopurine()` implements CPIC's 2025/2026 joint TPMT+NUDT15 mercaptopurine dosing table (including the new "compound intermediate metabolizer" 20-50% dose-reduction tier), used automatically whenever a report requests both TPMT and NUDT15 together, and falling back to TPMT's existing single-gene azathioprine table otherwise. Phase 9 adds runnable orchestration on top: `pgx_interpreter/cli.py` (a `report` subcommand wrapping Layers 1-4 + report rendering into one command) and `main.nf` (a Nextflow DSL2 pipeline that fans that CLI call out across a samplesheet of samples, with the usual per-process isolation/retry/resume, confirmed working end to end on a real machine, Nextflow 26.04.3). CYP2C19 (Phase 8) answers Architecture Review 1's own closing question (§6) by being a genuinely third calling-logic shape — three independent single-SNP loci where double-heterozygosity is resolved directly to a compound diplotype rather than declined, backed by real population-genetics and nomenclature evidence (see `docs/GENE_SCOPE.md`); a real GeT-RM sample (GM17203, `*2/*17`) independently confirms this design choice against an actual laboratory consensus call. A PharmCAT comparison was documented against its own published methodology (a live run was attempted and found infeasible in this sandbox — see `docs/VALIDATION.md` §4 and `docs/PHARMCAT_LIVE_COMPARISON_RUNBOOK.md`). See `docs/ARCHITECTURE_REVIEW_V01.md` for what turned out universal vs. gene-specific across Phases 2-4, and `docs/GENE_SCOPE.md` for each gene's scope, citations, and known limitations.
 
 This is a standalone, deliberate complement to the [CAPN3/DMD/BRCA1 ACMG/AMP variant classifier](https://github.com/bkhimek/CAPN3-DMD-variant-classifier) — same portfolio, same underlying discipline (evidence provenance, versioning, explicit uncertainty, gene-specific logic), different clinical question: drug response instead of disease causation.
 
@@ -14,7 +14,7 @@ VCF → variant → allele/haplotype → diplotype → functional phenotype → 
 
 ## Scope
 
-**v1 genes:** TPMT, DPYD, SLCO1B1, CYP2C19 — all four now implemented (Phase 8).
+**v1 genes:** TPMT, DPYD, SLCO1B1, CYP2C19, NUDT15 — all five now implemented.
 
 **Explicitly out of scope:** CYP2D6 — it requires specialist structural-variant-aware calling (CYP2D7 homology, CNV, hybrid alleles) that this project deliberately isn't attempting. See `docs/PGX_FOUNDATIONS.md` and the project plan §9 for why.
 
@@ -53,7 +53,7 @@ Evidence is fetched via a versioned adapter (fetch → validate → stamp with r
 
 ## Repository structure
 
-Current state (Phase 9).
+Current state (NUDT15 session, after Phase 9).
 
 ```text
 pgx-interpretation-pipeline/
@@ -83,7 +83,8 @@ pgx-interpretation-pipeline/
 │       ├── tpmt.py
 │       ├── dpyd.py
 │       ├── slco1b1.py
-│       └── cyp2c19.py          # Phase 8: three independent single-SNP loci, compound-diplotype model
+│       ├── cyp2c19.py          # Phase 8: three independent single-SNP loci, compound-diplotype model
+│       └── nudt15.py           # one locus, two alleles -- the narrowest v1 gene scope, see docs/GENE_SCOPE.md
 ├── tests/
 │   ├── run_tests.py
 │   ├── test_models.py
@@ -92,17 +93,19 @@ pgx-interpretation-pipeline/
 │   ├── test_dpyd.py
 │   ├── test_slco1b1.py
 │   ├── test_cyp2c19.py         # Phase 8
-│   ├── test_evidence.py
+│   ├── test_nudt15.py
+│   ├── test_evidence.py        # includes recommend_compound_thiopurine() (TPMT+NUDT15) tests
 │   ├── test_report.py
-│   ├── test_cli.py             # Phase 9: real subprocess invocations of the CLI, 9 tests
+│   ├── test_cli.py             # real subprocess invocations of the CLI
 │   ├── test_getrm_validation.py  # Phase 7: real GeT-RM reference-material cross-validation
 │   ├── fixtures/normalize/     # 5 VCF fixtures, Layer-1-only
 │   ├── fixtures/tpmt/          # 7 VCF fixtures
 │   ├── fixtures/dpyd/          # 12 VCF fixtures
 │   ├── fixtures/slco1b1/       # 12 VCF fixtures
 │   ├── fixtures/cyp2c19/       # 14 VCF fixtures
+│   ├── fixtures/nudt15/        # 6 VCF fixtures
 │   ├── fixtures/evidence/      # 4 real ClinPGx guideline-annotation payloads, network-free tests
-│   └── fixtures/getrm/         # 31 real GeT-RM sample fixtures (tpmt/, dpyd/, cyp2c19/, slco1b1/), see docs/VALIDATION.md
+│   └── fixtures/getrm/         # 31 real GeT-RM sample fixtures (tpmt/, dpyd/, cyp2c19/, slco1b1/), see docs/VALIDATION.md -- NUDT15 not yet included
 ├── main.nf                     # Phase 9: Nextflow DSL2 orchestration, one process per sample
 ├── nextflow.config             # Phase 9: params, manifest, `standard` (local) profile
 ├── pyproject.toml

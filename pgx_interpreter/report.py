@@ -131,6 +131,26 @@ _GENE_LIMITATIONS: dict[str, tuple[str, ...]] = {
         "VCF phase information and multi-allelic ALT fields have the same "
         "limitations documented for TPMT.",
     ),
+    "NUDT15": (
+        "Only 1 defining variant (c.415C>T, R139C) is recognized, distinguishing "
+        "*1 (normal function) from a consolidated no-function *3 allele; the "
+        "GAGTCG-hexanucleotide insertion that further distinguishes PharmVar's "
+        "*3.001/*3.002 suballeles (and *6) is out of scope -- correctly "
+        "representing that repeat-expansion indel requires a reference FASTA "
+        "this project's build environment does not have, and its own literature-"
+        "cited rsID (rs869320766) could not be resolved against current dbSNP "
+        "(see genes/nudt15.py's module docstring for the real discrepancy found).",
+        "\"Possible intermediate metabolizer\" and \"Indeterminate\" phenotype "
+        "categories can never be produced by this module, since they depend on "
+        "alleles it doesn't implement.",
+        "A confident Tier 2 drug recommendation for this gene requires a TPMT "
+        "result for the same sample -- CPIC's dosing tables are keyed on the "
+        "joint TPMT+NUDT15 phenotype, not NUDT15 alone; see evidence.py's "
+        "recommend_compound_thiopurine().",
+        "VCF phase information and multi-allelic ALT fields have the same "
+        "limitations documented for TPMT (though this module's single-locus "
+        "model never has phase to resolve in the first place).",
+    ),
 }
 
 # Section 10 -- summarizes the real, closed licensing audit in

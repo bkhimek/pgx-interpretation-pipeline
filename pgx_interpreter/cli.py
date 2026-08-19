@@ -2,14 +2,32 @@
 
 Every layer of this pipeline through Phase 8 was deliberately built as a
 library, not a program: `parse_vcf()`, `call_tpmt()`/`call_dpyd()`/
-`call_slco1b1()`/`call_cyp2c19()`, `evidence.recommend()`, and
-`report.build_report()`/`to_json()`/etc. are all pure functions a caller
-composes (see each module's own docstring, especially `report.py`'s "this
-module does not call any gene function... a caller assembles the results it
-wants"). Phase 9 is that caller, exposed two ways: this CLI directly, and
-`main.nf`, which does nothing more than invoke this CLI once per sample
-inside a Nextflow process (see `main.nf`'s own header comment for why that
-split, not a per-gene split, was chosen).
+`call_slco1b1()`/`call_cyp2c19()`/`call_nudt15()`, `evidence.recommend()`,
+and `report.build_report()`/`to_json()`/etc. are all pure functions a
+caller composes (see each module's own docstring, especially `report.py`'s
+"this module does not call any gene function... a caller assembles the
+results it wants"). Phase 9 is that caller, exposed two ways: this CLI
+directly, and `main.nf`, which does nothing more than invoke this CLI once
+per sample inside a Nextflow process (see `main.nf`'s own header comment
+for why that split, not a per-gene split, was chosen).
+
+## NUDT15 and the compound TPMT+NUDT15 recommendation
+
+`evidence.recommend_compound_thiopurine()` (added the same session as
+`genes/nudt15.py`) needs BOTH genes' `PGxResult`s at once -- CPIC's
+2025/2026 mercaptopurine dosing table is keyed on the joint TPMT+NUDT15
+phenotype, not either gene alone (see `evidence.py`'s module docstring).
+`run_report()` below therefore special-cases the recommendation step: when
+both "TPMT" and "NUDT15" are among the requested genes, it calls
+`recommend_compound_thiopurine()` once for that pair (attaching the same
+mercaptopurine recommendation to both results, superseding the single-gene
+azathioprine table for TPMT in that case) and falls back to per-gene
+`recommend()` for every other requested gene; when only one of TPMT/NUDT15
+is requested, that gene goes through the ordinary per-gene `recommend()`
+path unchanged from Phase 5-8 (TPMT keeps its own single-gene azathioprine
+table; a NUDT15-only report gets no Tier 2 recommendation at all, since
+none of CPIC's tables have a "NUDT15 alone" row -- a real, documented
+limitation, not an oversight).
 
 ## Why one process per sample, not one process per gene
 
@@ -68,9 +86,10 @@ from pathlib import Path
 from typing import Optional
 
 from pgx_interpreter import report as report_mod
-from pgx_interpreter.evidence import EvidenceFetchError, recommend
+from pgx_interpreter.evidence import EvidenceFetchError, recommend, recommend_compound_thiopurine
 from pgx_interpreter.genes.cyp2c19 import call_cyp2c19
 from pgx_interpreter.genes.dpyd import call_dpyd
+from pgx_interpreter.genes.nudt15 import call_nudt15
 from pgx_interpreter.genes.slco1b1 import call_slco1b1
 from pgx_interpreter.genes.tpmt import call_tpmt
 from pgx_interpreter.models import GenomeBuild
@@ -81,6 +100,7 @@ GENE_CALLERS = {
     "DPYD": call_dpyd,
     "SLCO1B1": call_slco1b1,
     "CYP2C19": call_cyp2c19,
+    "NUDT15": call_nudt15,
 }
 ALL_GENES = tuple(GENE_CALLERS.keys())
 
@@ -133,6 +153,25 @@ def _recommend_or_warn(result, *, cache_dir: Optional[Path], stderr) -> "report_
         return result
 
 
+def _recommend_compound_or_warn(tpmt_result, nudt15_result, *, cache_dir: Optional[Path], stderr):
+    """Same offline-friendly-but-not-guessing wrapper as `_recommend_or_warn`
+    above, for the two-gene `recommend_compound_thiopurine()` path (see this
+    module's docstring, "NUDT15 and the compound TPMT+NUDT15
+    recommendation"). Returns the `(tpmt_result, nudt15_result)` pair
+    unchanged on a fetch failure -- both genes' Layer 1-3 work stays intact
+    either way."""
+    try:
+        return recommend_compound_thiopurine(tpmt_result, nudt15_result, cache_dir=cache_dir)
+    except EvidenceFetchError as exc:
+        print(
+            f"[pgx-cli WARNING] Tier 2 compound TPMT+NUDT15 recommendation unavailable "
+            f"(sample {tpmt_result.sample_id}): {exc}. Continuing without a drug recommendation "
+            "for either gene -- the phenotype/diplotype calls above are unaffected.",
+            file=stderr,
+        )
+        return tpmt_result, nudt15_result
+
+
 def run_report(
     *,
     vcf_path: Path,
@@ -153,14 +192,39 @@ def run_report(
 
     observed_variants = parse_vcf(vcf_path, genome_build)
 
-    results = []
+    # Dict, not list, so the TPMT/NUDT15 compound-recommendation special
+    # case below (this module's own docstring, "NUDT15 and the compound
+    # TPMT+NUDT15 recommendation") can look either gene's result up by name
+    # regardless of which order `genes` lists them in; reassembled back into
+    # the caller's requested order immediately after.
+    results_by_gene = {}
     for gene in genes:
         caller = GENE_CALLERS[gene]
-        result = caller(observed_variants, sample_id, genome_build)
-        if with_recommendations:
-            result = _recommend_or_warn(result, cache_dir=evidence_cache_dir, stderr=stderr)
-        results.append(result)
+        results_by_gene[gene] = caller(observed_variants, sample_id, genome_build)
 
+    if with_recommendations:
+        if "TPMT" in results_by_gene and "NUDT15" in results_by_gene:
+            tpmt_result, nudt15_result = _recommend_compound_or_warn(
+                results_by_gene["TPMT"],
+                results_by_gene["NUDT15"],
+                cache_dir=evidence_cache_dir,
+                stderr=stderr,
+            )
+            results_by_gene["TPMT"] = tpmt_result
+            results_by_gene["NUDT15"] = nudt15_result
+            for gene in results_by_gene:
+                if gene in ("TPMT", "NUDT15"):
+                    continue
+                results_by_gene[gene] = _recommend_or_warn(
+                    results_by_gene[gene], cache_dir=evidence_cache_dir, stderr=stderr
+                )
+        else:
+            for gene in results_by_gene:
+                results_by_gene[gene] = _recommend_or_warn(
+                    results_by_gene[gene], cache_dir=evidence_cache_dir, stderr=stderr
+                )
+
+    results = [results_by_gene[gene] for gene in genes]
     report = report_mod.build_report(tuple(results), sample_id=sample_id)
 
     out_dir.mkdir(parents=True, exist_ok=True)

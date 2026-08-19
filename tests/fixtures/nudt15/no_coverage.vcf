@@ -1,0 +1,5 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr13>
+##comment=No record at all for the *3-defining position (chr13:48045719) -- simulates incomplete extraction/coverage, distinct from a confirmed hom_ref call.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1

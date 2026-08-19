@@ -4,7 +4,7 @@ Phase 0 deliverable. Working reference for the vocabulary and reasoning chain us
 
 ## Core vocabulary
 
-**Pharmacogene** — a gene whose sequence variation predictably alters how a person responds to one or more drugs (absorption, metabolism, transport, or target sensitivity), as opposed to a gene whose variation causes disease directly. TPMT, DPYD, SLCO1B1, and CYP2C19 (this project's v1 scope) are all pharmacogenes; CAPN3/DMD/BRCA1 (the companion classifier project) are disease genes. Same discipline, different question.
+**Pharmacogene** — a gene whose sequence variation predictably alters how a person responds to one or more drugs (absorption, metabolism, transport, or target sensitivity), as opposed to a gene whose variation causes disease directly. TPMT, DPYD, SLCO1B1, CYP2C19, and NUDT15 (this project's v1 scope) are all pharmacogenes; CAPN3/DMD/BRCA1 (the companion classifier project) are disease genes. Same discipline, different question.
 
 **Haplotype** — the set of variants that co-occur on a single physical copy of a chromosome (one parental allele), as opposed to a genotype, which just lists variants without saying which parent's copy each sits on. Haplotype is inherently a *phased* concept.
 
@@ -60,4 +60,4 @@ Every arrow above is a distinct, inspectable step with its own provenance. Nothi
 
 ## Scope reminder
 
-v1 genes: TPMT, DPYD, SLCO1B1, then CYP2C19. CYP2D6 is explicitly out of scope for v1 (Plan §2, §9) — it requires specialist structural-variant-aware calling (CYP2D7 homology, CNV, hybrid alleles) that generic VCF-based interpretation cannot safely attempt. Investigating *why* is itself one of this project's research questions (RQ4), not an oversight.
+v1 genes: TPMT, DPYD, SLCO1B1, CYP2C19, then NUDT15 (added after the original plan's four-gene scope, once the joint TPMT+NUDT15 thiopurine guideline made it a natural extension of the TPMT work already done). CYP2D6 is explicitly out of scope for v1 (Plan §2, §9) — it requires specialist structural-variant-aware calling (CYP2D7 homology, CNV, hybrid alleles) that generic VCF-based interpretation cannot safely attempt. Investigating *why* is itself one of this project's research questions (RQ4), not an oversight.

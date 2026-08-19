@@ -1,0 +1,6 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##contig=<ID=chr13>
+##comment=A real variant exists at the *3-defining position but with a different substitution (C>A, not C>T) -- proves position-only matching would be wrong, same discipline as tests/fixtures/tpmt/conflicting_unsupported_pattern.vcf.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr13	48045719	.	C	A	99	PASS	.	GT	0/1
