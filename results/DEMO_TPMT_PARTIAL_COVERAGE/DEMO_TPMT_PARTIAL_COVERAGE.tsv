@@ -1,0 +1,5 @@
+sample_id	gene	genome_build	alleles	diplotype	phase_status	phenotype	confidence	activity_score	recommended_drug	recommendation_category
+DEMO_TPMT_PARTIAL_COVERAGE	TPMT	GRCh38	*1/*1	*1/*1	phased	Normal Metabolizer	supported			
+DEMO_TPMT_PARTIAL_COVERAGE	DPYD	GRCh38	not_determined/?	not_determined/?	not_applicable	Indeterminate (insufficient data: locus/loci not confirmed hom-ref: *2A (no genotype record at all), *13 (no genotype record at all), D949V (no genotype record at all), HapB3 (no-call (missing genotype)) (neither HapB3-defining variant observed))	insufficient_data			
+DEMO_TPMT_PARTIAL_COVERAGE	SLCO1B1	GRCh38	not_determined/?	not_determined/?	not_applicable	Indeterminate (insufficient data: no genotype record at all for chr12:21176804 -- incomplete extraction/coverage, not a confirmed reference call)	insufficient_data			
+DEMO_TPMT_PARTIAL_COVERAGE	CYP2C19	GRCh38	not_determined/?	not_determined/?	not_applicable	Indeterminate (insufficient data: locus/loci not confirmed hom-ref: *2 (no genotype record at all), *3 (no genotype record at all), *17 (no genotype record at all))	insufficient_data			

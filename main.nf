@@ -26,22 +26,37 @@
  * downloading its Java runtime from `www.nextflow.io/releases` (or GitHub
  * release assets), and both hosts return `403 blocked-by-allowlist` from
  * this sandbox's own network proxy, the same category of restriction
- * already documented for PharmCAT. Run it on a machine with real network
- * access (e.g. your WSL machine) to confirm; the "Getting started" section
- * below gives the exact command using this repo's own test fixtures, so a
- * first real run needs no external data.
+ * already documented for PharmCAT. A first real run (2026-08-19, Nextflow
+ * 26.04.3) surfaced three real bugs, fixed the same day as they were found,
+ * one at a time as each successive run reached further: (1) nextflow.config's
+ * strict config parser rejected a bare top-level `def` variable declaration
+ * mixed with config blocks (see nextflow.config's own comment); (2) this
+ * file's DSL2 parser rejected bare top-level `if` statements (the
+ * `--help`/missing-`--input` checks) sitting outside any process/workflow/
+ * function -- both checks now live inside the `workflow { }` block below;
+ * (3) the `PGX_REPORT` process's `publishDir` referenced the per-task input
+ * variable `sample_id` in a plain interpolated string, which Nextflow
+ * evaluates immediately at process-definition time (before any task's
+ * inputs exist) unless wrapped in an explicit closure -- unlike `tag`, which
+ * Nextflow does treat a plain string as dynamic for. (1) and (2) were
+ * genuine newer-Nextflow-strictness changes; (3) was a real bug in the
+ * original write, not version-specific. Run it on a machine with real
+ * network access (e.g. your WSL machine) to confirm the fix; the "Getting
+ * started" section below gives the exact command using this repo's own
+ * test fixtures, so a first real run needs no external data.
  */
 
 nextflow.enable.dsl = 2
 
-params.input                = null
-params.outdir               = 'results'
-params.genome_build         = 'GRCh38'
-params.genes                = 'TPMT,DPYD,SLCO1B1,CYP2C19'
-params.formats               = 'json,tsv,html,markdown'
-params.with_recommendations  = true
-params.evidence_cache_dir    = null  // null -> pgx_interpreter.cli's own default cache location
-params.help                  = false
+// Parameter defaults live in nextflow.config's `params { }` block, not
+// here -- deliberately not duplicated. Nextflow's documented parameter
+// precedence puts values assigned directly in the pipeline script (this
+// file) at LOWEST precedence, below both the command line and config
+// files, so a second `params.x = ...` set here would be redundant at best;
+// keeping exactly one place params are declared removes any doubt about
+// which one is authoritative (a real, if usually harmless, footgun the
+// nf-core community has already been burned by, per its own docs on this
+// exact pattern).
 
 def helpMessage() {
     log.info """
@@ -68,18 +83,23 @@ def helpMessage() {
     """.stripIndent()
 }
 
-if (params.help) {
-    helpMessage()
-    exit 0
-}
-
-if (!params.input) {
-    error "Missing required parameter --input (path to a samplesheet CSV with columns: sample_id,vcf). Run with --help for usage."
-}
-
 process PGX_REPORT {
     tag "${sample_id}"
-    publishDir "${params.outdir}/${sample_id}", mode: 'copy'
+    // `tag` is one of a small set of directives Nextflow treats as
+    // implicitly dynamic from a plain interpolated string (see Nextflow's
+    // own docs: `tag "$sample_id"` is the documented pattern). `publishDir`
+    // is NOT in that set -- referencing a per-task input variable
+    // (`sample_id`, bound below in `input:`) requires an EXPLICIT closure,
+    // or Nextflow evaluates the string immediately at process-definition
+    // time, before any task's inputs are bound, and fails with "No such
+    // variable: sample_id" (confirmed for real, 2026-08-19, Nextflow
+    // 26.04.3 -- this was a genuine bug in the original write, not a
+    // newer-Nextflow-strictness change like the two prior fixes this
+    // session).
+    publishDir(
+        path: { "${params.outdir}/${sample_id}" },
+        mode: 'copy'
+    )
 
     input:
     tuple val(sample_id), path(vcf)
@@ -104,8 +124,17 @@ process PGX_REPORT {
 }
 
 workflow {
+    // Both checks below were formerly bare top-level `if` statements --
+    // moved in here per this file's own header comment (a newer Nextflow
+    // release rejects executable statements outside a process, workflow,
+    // or function).
     if (params.help) {
-        return
+        helpMessage()
+        exit 0
+    }
+
+    if (!params.input) {
+        error "Missing required parameter --input (path to a samplesheet CSV with columns: sample_id,vcf). Run with --help for usage."
     }
 
     samples_ch = Channel

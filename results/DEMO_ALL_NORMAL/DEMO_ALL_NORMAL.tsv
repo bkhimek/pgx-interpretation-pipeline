@@ -1,0 +1,5 @@
+sample_id	gene	genome_build	alleles	diplotype	phase_status	phenotype	confidence	activity_score	recommended_drug	recommendation_category
+DEMO_ALL_NORMAL	TPMT	GRCh38	*1/*1	*1/*1	phased	Normal Metabolizer	supported			
+DEMO_ALL_NORMAL	DPYD	GRCh38	*1/*1	*1/*1	phased	Normal Metabolizer	supported	2.0		
+DEMO_ALL_NORMAL	SLCO1B1	GRCh38	*1/*1	*1/*1	phased	Normal function	supported			
+DEMO_ALL_NORMAL	CYP2C19	GRCh38	*1/*1	*1/*1	phased	Normal Metabolizer	supported			

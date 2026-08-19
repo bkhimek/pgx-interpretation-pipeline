@@ -551,3 +551,90 @@ Identified the underlying publication (Pratt VM et al. 2016, *J Mol Diagn* 18:10
 **Next session should:**
 1. Sync this batch, review diff, and **before committing**, actually run `nextflow run main.nf --input assets/samplesheet_example.csv --evidence_cache_dir tests/fixtures/evidence` on the WSL machine (which has real internet access) to confirm the DSL2 syntax is correct end to end -- this is the one thing this session could not verify directly. Fix anything that surfaces, then commit ("Phase 9: Nextflow orchestration -- pgx_interpreter/cli.py + main.nf, one process per sample, 9 new CLI tests") and push.
 2. Once confirmed working and the user gives the go-ahead: a container/Conda profile, or a live PharmCAT run, are the two legitimate remaining follow-ups. With Phase 9 landed, every phase in the original plan's numbered sequence is now at least a first pass complete -- a good point to consider what a "v2" scope might look like (NUDT15, CYP2D6 feasibility revisit, additional genes) if the user wants to keep extending this project.
+
+---
+
+## 2026-08-19 — Session 15 (Phase 9 fix: real Nextflow run surfaced a config bug)
+
+**What happened:** the user ran `nextflow run main.nf --input assets/samplesheet_example.csv --evidence_cache_dir tests/fixtures/evidence` for real on their WSL machine (Nextflow 26.04.3) -- exactly the verification step flagged as still-needed in the prior session's notes. It failed immediately at config parsing, before ever reaching the workflow itself:
+
+```
+Error nextflow.config:53:1: Variable declarations cannot be mixed with config statements
+```
+
+**Root cause:** `nextflow.config` had a top-level `def timestamp = new java.text.SimpleDateFormat(...)` line, used to give the timeline/report/trace output files a shared timestamped name. Nextflow's config parser in this (newer) release enforces that a config file consists only of config statements (assignments/blocks) -- a bare Groovy variable declaration mixed in, even one used only to compute a value referenced by config statements below it, is now rejected outright. This wasn't something the prior session's design review caught, and couldn't have been caught by hand-reading alone without hitting this exact parser version -- confirming the honest limitation already stated in main.nf's header comment (no live Nextflow available in the Cowork sandbox to catch this before delivery).
+
+**Fix:** removed the shared `def timestamp` variable; each of the three blocks (`timeline`/`report`/`trace`) now computes its own timestamp inline via `new Date().format('yyyyMMdd_HHmmss')` directly inside its `file = "..."` string interpolation -- a config-statement-only file, no bare variable declarations. Also removed as a precaution, not because it was confirmed broken: `main.nf` had been redundantly re-declaring every `params.x = ...` default that `nextflow.config`'s own `params { }` block already sets. Nextflow's documented precedence puts script-level param assignments at the *lowest* priority (below command line and config files), so this wasn't actually causing the failure or silently overriding anything -- but carrying two sources of truth for the same defaults is exactly the kind of thing that's caused real, well-documented footguns in the nf-core community before, so it was removed while already in this file fixing the other bug, per this project's own "don't leave a known sharp edge sitting around" discipline.
+
+**Verification done this session:** full test suite re-run (`PYTHONPATH=. pytest -q` and `PYTHONPATH=. python3 tests/run_tests.py`, both still 176/176 -- this fix touches only `nextflow.config`/`main.nf`, neither of which the Python test suite exercises) and the same manual "run every command `main.nf`'s process would run, once per samplesheet row" check as Phase 9's original delivery, all three still succeeding. **What was NOT re-verified**: an actual `nextflow run` with the fixed config -- still blocked in this sandbox for the same network-allowlist reason as before. This fix is a well-reasoned, syntax-level correction (the exact same inline-timestamp pattern is a documented, common nf-core idiom precisely because of this parser restriction), not a guess, but it genuinely has not been confirmed against a live Nextflow process yet.
+
+**Not done yet (deliberately deferred, not an oversight):**
+- Live confirmation that `nextflow run main.nf` now succeeds end to end -- this is the direct, immediate next step, on the user's own WSL machine where the failure was originally found.
+- Everything else carried forward unchanged from the prior session's list (container/Conda profile, live PharmCAT run, v2 scope planning).
+
+**Next session should:**
+1. Sync this batch, and **first** re-run `nextflow run main.nf --input assets/samplesheet_example.csv --evidence_cache_dir tests/fixtures/evidence` to confirm the config fix actually works, before committing anything. If it still fails, paste the exact error back -- config-parser strictness has already changed once between Nextflow releases and could plausibly have another edge case.
+2. Once confirmed working: commit ("Fix nextflow.config: remove top-level def mixed with config statements (Nextflow's stricter config parser rejected it); also drop main.nf's redundant params re-declarations"), push, and pick up wherever the user wants to go next (container/Conda profile, live PharmCAT run, or v2 scope planning -- all still open).
+
+---
+
+## 2026-08-19 — Session 16 (Phase 9 fix #2: main.nf's own bare top-level `if` statements)
+
+**What happened:** the user re-ran `nextflow run main.nf ...` immediately after landing Session 15's config fix. The config parsed fine this time, but the workflow script itself then failed to compile:
+
+```
+Error main.nf:76:1: Statements cannot be mixed with script declarations -- move statements into a process, workflow, or function
+```
+
+**Root cause:** `main.nf` had two bare top-level `if` blocks (the `--help` check and the missing-`--input` check) sitting directly in the script body, outside any `process`/`workflow`/`function`. This is the exact same category of change as Session 15's config-parser fix, just in the DSL2 script parser rather than the config parser: this Nextflow release requires everything at top level in a pipeline script to be a *declaration* (`def`, `process`, `workflow`, `include`, the `nextflow.enable.dsl` directive) -- no directly-executable statements. The prior session's design review didn't catch this because it's the same underlying class of "newer Nextflow tightened what's allowed outside workflow/process blocks" change already flagged as a real, unverified risk in that session's own notes.
+
+**Fix:** moved both `if` blocks into the `workflow { }` block, exactly where the error message itself pointed. `helpMessage()` (a function definition, not a statement) and `process PGX_REPORT { }` (a process definition) both remain at top level unchanged, since declarations are exactly what's still allowed there. No behavior change intended -- same help text, same validation, same error messages, just relocated.
+
+**Verification done this session:** full test suite re-run (176/176 under both runners, unaffected -- this fix touches only `main.nf`, not Python) and the same "run every command the process would run, once per samplesheet row" manual check, all three still succeeding. **Still not re-verified: an actual `nextflow run`** -- this sandbox still can't execute Nextflow itself (see main.nf's own header, updated again this session).
+
+**A pattern worth naming plainly:** this is the second Nextflow-version-specific parser strictness issue found in two consecutive real runs. Both were genuine, unpredictable-from-static-review changes in Nextflow's own grammar between versions (not the same bug recurring, not carelessness in the original write) -- but it means main.nf/nextflow.config should be treated as **not fully trustworthy until a live `nextflow run` actually succeeds end to end**, the same standard already applied to everything else in this project. Don't build a container/Conda profile or anything else on top of these two files until that happens -- there could plausibly be a third such issue waiting.
+
+**Not done yet (deliberately deferred, not an oversight):**
+- Live confirmation that `nextflow run main.nf` now succeeds end to end -- still the direct, immediate next step.
+- Everything else unchanged from prior sessions' lists (container/Conda profile, live PharmCAT run, v2 scope planning) -- explicitly NOT to be started until the above is confirmed, per the note above.
+
+**Next session should:**
+1. Sync this batch, and **first** re-run `nextflow run main.nf --input assets/samplesheet_example.csv --evidence_cache_dir tests/fixtures/evidence` again. If it fails again, paste the exact error -- there is a real, demonstrated pattern of this specific Nextflow version being stricter than expected, so don't assume a third fix attempt will be the last one; verify before committing further trust in these two files.
+2. Once it actually succeeds end to end (processes run, reports appear under `results/`, exit code 0): commit ("Fix main.nf: move top-level if statements (--help, --input validation) into workflow{} block -- newer Nextflow's DSL2 parser rejects bare statements outside process/workflow/function"), push. Only then consider container/Conda profile, live PharmCAT run, or v2 scope planning.
+
+---
+
+## 2026-08-19 — Session 17 (Phase 9 fix #3: publishDir's non-dynamic path)
+
+**What happened:** the user re-ran `nextflow run main.nf ...` again immediately after landing Session 16's fix. The script now compiled cleanly (no more parser errors), but execution itself failed on the very first task:
+
+```
+ERROR ~ No such variable: sample_id
+ -- Check script 'main.nf' at line: 84 or see '.nextflow.log' file for more details
+```
+
+Line 84 was the `PGX_REPORT` process's `publishDir "${params.outdir}/${sample_id}", mode: 'copy'` directive.
+
+**Root cause, and why this one is different from the prior two:** the prior two fixes (Sessions 15-16) were genuine Nextflow-version-strictness changes -- syntax that plausibly worked on older releases and only broke on this newer one. This one is not that: it was a real bug in the original write, on any Nextflow version. `tag "${sample_id}"` (the line right above it, which did NOT error) is one of a small set of directives Nextflow treats as implicitly dynamic when given a plain interpolated string -- Nextflow's own docs literally show `tag "$sample_id"` as the correct pattern. `publishDir` is not in that set: a plain `"${...}"` string is evaluated immediately when the process is defined, before any task's `input:` variables (like `sample_id`) are bound to an actual value -- hence "No such variable". Referencing a per-task input value in `publishDir` requires an *explicit* closure.
+
+**Fix:** rewrote the directive using Nextflow's documented map-argument form, which lets the dynamic `path` and the static `mode` coexist clearly:
+```groovy
+publishDir(
+    path: { "${params.outdir}/${sample_id}" },
+    mode: 'copy'
+)
+```
+The closure defers evaluation of the path string until each task actually runs, at which point `sample_id` is bound from that task's own input. `tag` was left unchanged (it was already correct). The `output: path("${sample_id}.*")` line was checked too and does NOT have this problem -- output declarations are always evaluated in each task's own bound-variable scope, unlike process-level metadata directives like `publishDir`/`tag`; no change was needed there.
+
+**Verification done this session:** same as the prior two -- full Python test suite (176/176, unaffected, this fix touches only `main.nf`) and the manual per-samplesheet-row command simulation, all three still succeeding. Could not verify the actual Groovy syntax of the new `publishDir(...)` block directly (no `groovy`/JVM Groovy interpreter available in this sandbox, and no root access to install one via apt) -- this fix is based on Nextflow's own documented "dynamic directives" pattern (the map-argument form combining a closure `path:` with a static `mode:` is the officially documented way to do exactly this), reviewed as carefully as this sandbox allows, but genuinely not executed.
+
+**Pattern update:** three real issues found across three consecutive real runs now (two version-strictness changes, one genuine original bug). This continues to argue for the same discipline stated in Session 16's notes: don't build anything on top of `main.nf`/`nextflow.config` until an actual `nextflow run` completes clean end to end with real output files. Worth noting as encouraging, not just discouraging: each run has gotten measurably further (config parse error -> script compile error -> runtime error on the first task) -- this is very plausibly the last blocker, but "plausibly" isn't "confirmed," so the same verify-before-building-further standard still applies.
+
+**Not done yet (deliberately deferred, not an oversight):**
+- Live confirmation that `nextflow run main.nf` now succeeds end to end -- still the direct, immediate next step, now three fixes deep.
+- Everything else unchanged from prior sessions' lists.
+
+**Next session should:**
+1. Sync this batch, and **first** re-run `nextflow run main.nf --input assets/samplesheet_example.csv --evidence_cache_dir tests/fixtures/evidence` again. If it succeeds: check that `results/DEMO_ALL_NORMAL/`, `results/DEMO_TPMT_PARTIAL_COVERAGE/`, and `results/DEMO_TPMT_AMBIGUOUS/` each contain the expected `.json`/`.tsv`/`.html`/`.md` files with sensible content (not just that the run exited 0) before trusting it fully.
+2. If it fails again, paste the exact error -- don't assume this was the last issue just because progress has been steady.
+3. Once it actually succeeds end to end with real, sensible output files: commit ("Fix main.nf: publishDir needs an explicit closure to reference per-task input variables like sample_id -- Nextflow evaluates plain interpolated strings for this directive at process-definition time, not per-task"), push. Only then consider container/Conda profile, live PharmCAT run, or v2 scope planning.
