@@ -29,6 +29,27 @@ table; a NUDT15-only report gets no Tier 2 recommendation at all, since
 none of CPIC's tables have a "NUDT15 alone" row -- a real, documented
 limitation, not an oversight).
 
+`recommend_compound_thiopurine()` itself now covers three CPIC compound
+tables, not just mercaptopurine: Table 2 (mercaptopurine, malignant and
+nonmalignant), Table 3 (thioguanine, malignant only), and Table 4
+(azathioprine, nonmalignant only) -- see `evidence.py`'s module docstring
+for the citations and the real classification-strength/dosing differences
+between them. `--thiopurine-drug {mercaptopurine,thioguanine,azathioprine}`
+below selects which one gets attached, defaulting to mercaptopurine (i.e.
+omitting the flag reproduces the exact prior behavior). Unlike
+`--cyp2c19-voriconazole`, this is a SELECTOR, not an additive flag: a
+compound recommendation already attaches to two `PGxResult`s at once
+(TPMT and NUDT15 together), so offering "all three drugs simultaneously"
+would mean generating up to three TPMT/NUDT15 result pairs and rendering
+up to six sections for what is fundamentally one clinical question --
+"what should this patient's thiopurine dose be" -- asked with a different
+drug in mind. A caller who genuinely wants more than one drug's guidance
+for the same sample can already do so directly against the library, e.g.
+calling `evidence.recommend_compound_thiopurine()` once per drug and
+assembling the results into one report by hand; `cli.py` itself only
+exposes the common single-drug-per-run case. No-op unless both TPMT and
+NUDT15 are in `--genes`.
+
 ## CYP2C19's second drug pairing (voriconazole)
 
 `evidence.recommend()` gained a `drug` parameter the same session
@@ -176,18 +197,22 @@ def _recommend_or_warn(
         return result
 
 
-def _recommend_compound_or_warn(tpmt_result, nudt15_result, *, cache_dir: Optional[Path], stderr):
+def _recommend_compound_or_warn(
+    tpmt_result, nudt15_result, *, cache_dir: Optional[Path], stderr, drug: Optional[str] = None
+):
     """Same offline-friendly-but-not-guessing wrapper as `_recommend_or_warn`
     above, for the two-gene `recommend_compound_thiopurine()` path (see this
     module's docstring, "NUDT15 and the compound TPMT+NUDT15
-    recommendation"). Returns the `(tpmt_result, nudt15_result)` pair
-    unchanged on a fetch failure -- both genes' Layer 1-3 work stays intact
-    either way."""
+    recommendation"). `drug` is forwarded to `recommend_compound_thiopurine()`
+    unchanged and defaults to None, i.e. mercaptopurine (Table 2), same as
+    always. Returns the `(tpmt_result, nudt15_result)` pair unchanged on a
+    fetch failure -- both genes' Layer 1-3 work stays intact either way."""
     try:
-        return recommend_compound_thiopurine(tpmt_result, nudt15_result, cache_dir=cache_dir)
+        return recommend_compound_thiopurine(tpmt_result, nudt15_result, drug=drug, cache_dir=cache_dir)
     except EvidenceFetchError as exc:
+        drug_note = f" (drug={drug!r})" if drug is not None else ""
         print(
-            f"[pgx-cli WARNING] Tier 2 compound TPMT+NUDT15 recommendation unavailable "
+            f"[pgx-cli WARNING] Tier 2 compound TPMT+NUDT15 recommendation unavailable{drug_note} "
             f"(sample {tpmt_result.sample_id}): {exc}. Continuing without a drug recommendation "
             "for either gene -- the phenotype/diplotype calls above are unaffected.",
             file=stderr,
@@ -206,6 +231,7 @@ def run_report(
     evidence_cache_dir: Optional[Path],
     out_dir: Path,
     cyp2c19_voriconazole: bool = False,
+    thiopurine_drug: Optional[str] = None,
     stderr=sys.stderr,
 ) -> list[Path]:
     """Layers 1-4 + report assembly + rendering, for one sample. Returns the
@@ -217,6 +243,13 @@ def run_report(
     clopidogrel -- see this module's docstring, "CYP2C19's second drug
     pairing". No-op unless CYP2C19 is in `genes` and `with_recommendations`
     is True.
+
+    `thiopurine_drug` selects which CPIC compound TPMT+NUDT15 table
+    (`mercaptopurine`, `thioguanine`, or `azathioprine`) the compound
+    recommendation path uses -- see this module's docstring, "NUDT15 and
+    the compound TPMT+NUDT15 recommendation". Defaults to None, i.e.
+    mercaptopurine, exactly reproducing prior behavior. No-op unless both
+    TPMT and NUDT15 are in `genes` and `with_recommendations` is True.
     """
     if not vcf_path.is_file():
         raise FileNotFoundError(f"VCF not found: {vcf_path}")
@@ -246,6 +279,7 @@ def run_report(
                 results_by_gene["NUDT15"],
                 cache_dir=evidence_cache_dir,
                 stderr=stderr,
+                drug=thiopurine_drug,
             )
             results_by_gene["TPMT"] = tpmt_result
             results_by_gene["NUDT15"] = nudt15_result
@@ -353,6 +387,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "pairing'). No-op unless CYP2C19 is in --genes and recommendations are enabled."
         ),
     )
+    report_parser.add_argument(
+        "--thiopurine-drug",
+        dest="thiopurine_drug",
+        choices=["mercaptopurine", "thioguanine", "azathioprine"],
+        default=None,
+        help=(
+            "Select which CPIC compound TPMT+NUDT15 dosing table (Table 2/3/4) the compound "
+            "recommendation uses when both TPMT and NUDT15 are requested together (see "
+            "evidence.py's module docstring). Default: mercaptopurine (Table 2, the prior "
+            "behavior) -- thioguanine and azathioprine are Tables 3 and 4. No-op unless both "
+            "TPMT and NUDT15 are in --genes and recommendations are enabled."
+        ),
+    )
 
     return parser
 
@@ -381,6 +428,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 evidence_cache_dir=args.evidence_cache_dir,
                 out_dir=args.out_dir,
                 cyp2c19_voriconazole=args.cyp2c19_voriconazole,
+                thiopurine_drug=args.thiopurine_drug,
             )
         except FileNotFoundError as exc:
             print(f"[pgx-cli ERROR] {exc}", file=sys.stderr)

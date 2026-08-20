@@ -79,6 +79,10 @@ def helpMessage() {
       --cyp2c19_voriconazole   true/false -- add a second CYP2C19 section recommended for voriconazole
                                 instead of the default clopidogrel (default: ${params.cyp2c19_voriconazole});
                                 no-op unless CYP2C19 is in --genes and recommendations are enabled
+      --thiopurine_drug        mercaptopurine, thioguanine, or azathioprine -- selects which CPIC
+                                compound TPMT+NUDT15 table (Table 2/3/4) the compound recommendation
+                                uses (default: mercaptopurine, i.e. leave unset); no-op unless both
+                                TPMT and NUDT15 are in --genes and recommendations are enabled
 
     Example (using this repo's own test fixtures, no external data needed):
       nextflow run main.nf --input assets/samplesheet_example.csv \\
@@ -114,6 +118,7 @@ process PGX_REPORT {
     def rec_flag    = params.with_recommendations ? '--with-recommendations' : '--no-recommendations'
     def cache_arg   = params.evidence_cache_dir ? "--evidence-cache-dir '${params.evidence_cache_dir}'" : ''
     def vori_flag   = params.cyp2c19_voriconazole ? '--cyp2c19-voriconazole' : ''
+    def thio_arg    = params.thiopurine_drug ? "--thiopurine-drug '${params.thiopurine_drug}'" : ''
     """
     PYTHONPATH="${projectDir}" python3 -m pgx_interpreter.cli report \\
         --vcf '${vcf}' \\
@@ -124,6 +129,7 @@ process PGX_REPORT {
         ${rec_flag} \\
         ${cache_arg} \\
         ${vori_flag} \\
+        ${thio_arg} \\
         --out-dir .
     """
 }

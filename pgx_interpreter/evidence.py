@@ -210,16 +210,57 @@ docstring):
     guideline's own stated rationale being additive toxicity risk from
     both genes' reduced clearance at once.
 
-**A real, documented scope decision (mercaptopurine only, not
-azathioprine/thioguanine):** CPIC's 2025/2026 update publishes three
-parallel harmonized-by-drug tables (Table 2 mercaptopurine, Table 3
-thioguanine, Table 4 azathioprine), each with the same four-row structure
-but different mg/kg/day figures and drug-specific caveats. This module
-implements only Table 2 (mercaptopurine) for v1 -- the same
-"one well-evidenced table now, document the rest as a real limitation"
-scoping pattern already used for CYP2C19's ACS/PCI-column-only clopidogrel
-scope. Thioguanine and azathioprine compound dosing are real, out-of-scope
-gaps, not silently dropped nuance.
+**Thioguanine and azathioprine, added a later session -- Tables 3 and 4,
+the same joint guideline's other two harmonized-by-drug tables.**
+CPIC's 2025/2026 update publishes three parallel tables in total (Table 2
+mercaptopurine above, Table 3 thioguanine, Table 4 azathioprine), all
+sharing the identical four-row category structure --
+`recommend_compound_thiopurine()` gained a `drug` parameter for this
+(default `"mercaptopurine"`, unchanged from before this parameter
+existed), mirroring `recommend()`'s own `drug` parameter for CYP2C19's two
+pairings, and `_compound_category()` factors the shared row-shape logic out
+from the three drugs' actual dosing text/classification.
+
+A real, easy-to-miss structural difference between the three tables, quoted
+as-is rather than smoothed over: Table 2 (mercaptopurine) covers BOTH
+malignant and nonmalignant conditions in one table, with recommendation
+text that branches by indication within a single row (see the Poor
+Metabolizer row above). Tables 3 and 4 do not -- **Table 3 (thioguanine)
+covers malignant conditions only** (thioguanine is not generally used for
+nonmalignant indications, so it has no nonmalignancy branch at all), and
+**Table 4 (azathioprine) covers nonmalignant conditions only** (the mirror
+image). Each drug's four rows, quoted directly:
+
+  - **Table 3, thioguanine (malignant conditions only):** both Normal:
+    "Initiate therapy with standard starting dose of thioguanine (e.g.,
+    40 mg/m2/day for malignancy)." (Strong). Exactly one Intermediate:
+    "Initiate therapy with decreased starting doses (30-80% of standard
+    starting dose) if standard starting dose is >=40 mg/m2/day." (Moderate
+    -- a real, CPIC-stated difference from mercaptopurine's "Strong" rating
+    for the identical phenotype category, not an inconsistency in this
+    module). Either Poor: "Initiate therapy with drastically reduced
+    starting doses. Reduce daily dose by 10-fold and reduce frequency to
+    thrice weekly instead of daily." (Strong -- no nonmalignancy-alternative-
+    agent branch, since this table is malignant-only). Both Intermediate
+    (compound): "Initiate therapy with decreased starting doses (20-50% of
+    standard starting dose) if standard starting dose is >=40 mg/m2/day."
+    (Moderate).
+  - **Table 4, azathioprine (nonmalignant conditions only):** both Normal:
+    "Initiate therapy with standard starting dose (e.g., 2 mg/kg/day for
+    autoimmune diseases)." (Strong). Exactly one Intermediate: "Initiate
+    therapy with reduced starting doses (30-80% of standard starting dose)
+    if standard starting dose is >=2 mg/kg/day." (Strong). Either Poor:
+    "Consider an alternative nonthiopurine immunosuppressant therapy."
+    (Strong -- unlike mercaptopurine's malignancy branch, this table offers
+    NO reduced-dose fallback at all for Poor Metabolizers; alternative
+    agents are simply assumed available for nonmalignant indications). Both
+    Intermediate (compound): "Initiate therapy with reduced starting doses
+    (20-50% of standard starting dose) if standard starting dose is
+    >=2 mg/kg/day." (Moderate).
+
+Both new tables were confirmed by directly reading the same primary source
+PDF already cited for mercaptopurine above (`41618934.pdf`, retrieved
+2026-08-20 for this addition).
 
 **CYP2C19 + clopidogrel** (guideline `PA166104948`) -- CPIC (2022 Update,
 "Table 1: Antiplatelet therapy recommendations based on CYP2C19 phenotype
@@ -665,50 +706,18 @@ _CYP2C19_VORICONAZOLE_RECOMMENDATIONS: dict[str, _RecommendationEntry] = {
 }
 
 
-# --- TPMT + NUDT15 (compound) + mercaptopurine, Table 2 (see module
-# docstring for full citation and the mercaptopurine-only scope decision) ---
+# --- TPMT + NUDT15 (compound), three drug tables (Tables 2-4 -- see module
+# docstring for full citations). Same joint guideline for all three. ---
 _COMPOUND_THIOPURINE_GUIDELINE_ID = "PA166104933"  # same joint guideline as single-gene TPMT above
 
-_COMPOUND_NM_NM = _RecommendationEntry(
-    drug="mercaptopurine",
-    recommendation=(
-        "Initiate therapy with the standard starting dose of mercaptopurine (e.g., 75 mg/m2/day "
-        "for malignancy or 1.5 mg/kg/day for nonmalignancy)."
-    ),
-    classification="Strong",
-    guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
-)
-_COMPOUND_ONE_IM_ONE_NM = _RecommendationEntry(
-    drug="mercaptopurine",
-    recommendation=(
-        "Initiate therapy with decreased starting doses (30-80% of standard starting dose) if "
-        "starting dose is >=75 mg/m2/day (for malignancy) or >=1.5 mg/kg/day (for nonmalignancy)."
-    ),
-    classification="Strong",
-    guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
-)
-_COMPOUND_EITHER_PM = _RecommendationEntry(
-    drug="mercaptopurine",
-    recommendation=(
-        "For malignancy: initiate therapy with drastically reduced starting doses (reduce starting "
-        "dose by 10-fold and reduce frequency to thrice weekly instead of daily). For nonmalignancy: "
-        "consider an alternative nonthiopurine immunosuppressant therapy."
-    ),
-    classification="Strong",
-    guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
-)
-_COMPOUND_BOTH_IM = _RecommendationEntry(
-    drug="mercaptopurine",
-    recommendation=(
-        "TPMT/NUDT15 compound intermediate metabolizer: initiate therapy with decreased starting "
-        "doses (20-50% of standard starting dose) if starting dose is >=75 mg/m2/day (for "
-        "malignancy) or >=1.5 mg/kg/day (for nonmalignancy) -- a deeper reduction than either "
-        "gene's own single-gene intermediate metabolizer recommendation, reflecting additive "
-        "toxicity risk from reduced clearance in both genes at once."
-    ),
-    classification="Strong",
-    guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
-)
+# The four category shapes every one of Tables 2/3/4 shares (same row
+# structure, different mg/kg/day figures and classification strengths per
+# drug -- see module docstring). Named, not just positional, so each
+# per-drug table below is self-documenting about which row is which.
+_CATEGORY_NM_NM = "both_normal"
+_CATEGORY_ONE_IM = "one_intermediate_one_normal"
+_CATEGORY_EITHER_PM = "either_poor"
+_CATEGORY_BOTH_IM = "compound_intermediate"
 
 # The three phenotype strings tpmt.py/nudt15.py can each actually produce
 # (both modules deliberately implement no uncertain/unknown-function
@@ -719,46 +728,207 @@ _COMPOUND_RECOGNIZED_PHENOTYPES = frozenset(
 )
 
 
-def _compound_thiopurine_entry(
-    tpmt_phenotype: str, nudt15_phenotype: str
-) -> Optional[_RecommendationEntry]:
-    """Table 2's four-row logic (see module docstring), applied to exactly
-    the phenotype strings this project's TPMT/NUDT15 modules can produce.
-    Returns None -- no guess -- for anything else (ambiguous, indeterminate,
-    unsupported-allele, or any phenotype string outside the three this
-    table recognizes)."""
+def _compound_category(tpmt_phenotype: str, nudt15_phenotype: str) -> Optional[str]:
+    """Which of the four row-shapes a joint TPMT+NUDT15 phenotype pair
+    falls into -- shared across all three drug tables, since Tables 2-4 use
+    the identical four-row structure (only the mg/kg/day figures and
+    classification strengths differ per drug). Returns None -- no guess --
+    for anything outside the three phenotype strings this project's
+    TPMT/NUDT15 modules can actually produce."""
     if (
         tpmt_phenotype not in _COMPOUND_RECOGNIZED_PHENOTYPES
         or nudt15_phenotype not in _COMPOUND_RECOGNIZED_PHENOTYPES
     ):
         return None
     if tpmt_phenotype == "Poor Metabolizer" or nudt15_phenotype == "Poor Metabolizer":
-        return _COMPOUND_EITHER_PM
+        return _CATEGORY_EITHER_PM
     if tpmt_phenotype == "Intermediate Metabolizer" and nudt15_phenotype == "Intermediate Metabolizer":
-        return _COMPOUND_BOTH_IM
+        return _CATEGORY_BOTH_IM
     if tpmt_phenotype == "Intermediate Metabolizer" or nudt15_phenotype == "Intermediate Metabolizer":
-        return _COMPOUND_ONE_IM_ONE_NM
-    return _COMPOUND_NM_NM  # both Normal Metabolizer
+        return _CATEGORY_ONE_IM
+    return _CATEGORY_NM_NM  # both Normal Metabolizer
+
+
+# Table 2 -- mercaptopurine, malignant AND nonmalignant conditions combined
+# (the only one of the three drugs where the guideline's own recommendation
+# text branches by indication within a single row).
+_COMPOUND_MERCAPTOPURINE_TABLE: dict[str, _RecommendationEntry] = {
+    _CATEGORY_NM_NM: _RecommendationEntry(
+        drug="mercaptopurine",
+        recommendation=(
+            "Initiate therapy with the standard starting dose of mercaptopurine (e.g., 75 mg/m2/day "
+            "for malignancy or 1.5 mg/kg/day for nonmalignancy)."
+        ),
+        classification="Strong",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+    _CATEGORY_ONE_IM: _RecommendationEntry(
+        drug="mercaptopurine",
+        recommendation=(
+            "Initiate therapy with decreased starting doses (30-80% of standard starting dose) if "
+            "starting dose is >=75 mg/m2/day (for malignancy) or >=1.5 mg/kg/day (for nonmalignancy)."
+        ),
+        classification="Strong",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+    _CATEGORY_EITHER_PM: _RecommendationEntry(
+        drug="mercaptopurine",
+        recommendation=(
+            "For malignancy: initiate therapy with drastically reduced starting doses (reduce starting "
+            "dose by 10-fold and reduce frequency to thrice weekly instead of daily). For nonmalignancy: "
+            "consider an alternative nonthiopurine immunosuppressant therapy."
+        ),
+        classification="Strong",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+    _CATEGORY_BOTH_IM: _RecommendationEntry(
+        drug="mercaptopurine",
+        recommendation=(
+            "TPMT/NUDT15 compound intermediate metabolizer: initiate therapy with decreased starting "
+            "doses (20-50% of standard starting dose) if starting dose is >=75 mg/m2/day (for "
+            "malignancy) or >=1.5 mg/kg/day (for nonmalignancy) -- a deeper reduction than either "
+            "gene's own single-gene intermediate metabolizer recommendation, reflecting additive "
+            "toxicity risk from reduced clearance in both genes at once."
+        ),
+        classification="Strong",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+}
+
+# Table 3 -- thioguanine, malignant conditions ONLY (thioguanine is not
+# generally used for nonmalignant indications, so this table has no
+# nonmalignancy branch at all -- a real, guideline-stated difference from
+# Table 2's dual-indication mercaptopurine table, not an omission here).
+# Note the classification strength for the one-IM and compound-IM rows is
+# "Moderate" here, not "Strong" like mercaptopurine's equivalent rows -- a
+# real, CPIC-stated difference between the two drugs' evidence strength for
+# the exact same phenotype categories, quoted as-is rather than smoothed
+# over into false consistency.
+_COMPOUND_THIOGUANINE_TABLE: dict[str, _RecommendationEntry] = {
+    _CATEGORY_NM_NM: _RecommendationEntry(
+        drug="thioguanine",
+        recommendation="Initiate therapy with standard starting dose of thioguanine (e.g., 40 mg/m2/day for malignancy).",
+        classification="Strong",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+    _CATEGORY_ONE_IM: _RecommendationEntry(
+        drug="thioguanine",
+        recommendation=(
+            "Initiate therapy with decreased starting doses (30-80% of standard starting dose) if "
+            "standard starting dose is >=40 mg/m2/day."
+        ),
+        classification="Moderate",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+    _CATEGORY_EITHER_PM: _RecommendationEntry(
+        drug="thioguanine",
+        recommendation=(
+            "Initiate therapy with drastically reduced starting doses. Reduce daily dose by 10-fold "
+            "and reduce frequency to thrice weekly instead of daily."
+        ),
+        classification="Strong",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+    _CATEGORY_BOTH_IM: _RecommendationEntry(
+        drug="thioguanine",
+        recommendation=(
+            "TPMT/NUDT15 compound intermediate metabolizer: initiate therapy with decreased starting "
+            "doses (20-50% of standard starting dose) if standard starting dose is >=40 mg/m2/day."
+        ),
+        classification="Moderate",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+}
+
+# Table 4 -- azathioprine, nonmalignant conditions ONLY (the mirror image of
+# Table 3: azathioprine's guideline table has no malignancy branch). Unlike
+# mercaptopurine's Table 2, the poor-metabolizer row here offers no reduced-
+# dose fallback at all -- CPIC recommends an alternative agent outright,
+# since (per the guideline's own reasoning, quoted in the module docstring)
+# nonmalignant indications have alternative agents available where
+# malignant ones may not.
+_COMPOUND_AZATHIOPRINE_TABLE: dict[str, _RecommendationEntry] = {
+    _CATEGORY_NM_NM: _RecommendationEntry(
+        drug="azathioprine",
+        recommendation="Initiate therapy with standard starting dose (e.g., 2 mg/kg/day for autoimmune diseases).",
+        classification="Strong",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+    _CATEGORY_ONE_IM: _RecommendationEntry(
+        drug="azathioprine",
+        recommendation=(
+            "Initiate therapy with reduced starting doses (30-80% of standard starting dose) if "
+            "standard starting dose is >=2 mg/kg/day."
+        ),
+        classification="Strong",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+    _CATEGORY_EITHER_PM: _RecommendationEntry(
+        drug="azathioprine",
+        recommendation="Consider an alternative nonthiopurine immunosuppressant therapy.",
+        classification="Strong",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+    _CATEGORY_BOTH_IM: _RecommendationEntry(
+        drug="azathioprine",
+        recommendation=(
+            "TPMT/NUDT15 compound intermediate metabolizer: initiate therapy with reduced starting "
+            "doses (20-50% of standard starting dose) if standard starting dose is >=2 mg/kg/day."
+        ),
+        classification="Moderate",
+        guideline_id=_COMPOUND_THIOPURINE_GUIDELINE_ID,
+    ),
+}
+
+_COMPOUND_TABLES_BY_DRUG: dict[str, dict[str, _RecommendationEntry]] = {
+    "mercaptopurine": _COMPOUND_MERCAPTOPURINE_TABLE,
+    "thioguanine": _COMPOUND_THIOGUANINE_TABLE,
+    "azathioprine": _COMPOUND_AZATHIOPRINE_TABLE,
+}
+_KNOWN_COMPOUND_THIOPURINE_DRUGS = tuple(_COMPOUND_TABLES_BY_DRUG.keys())
+
+
+def _compound_thiopurine_entry(
+    tpmt_phenotype: str, nudt15_phenotype: str, drug: str
+) -> Optional[_RecommendationEntry]:
+    """Looks up the four-row-shape category (shared logic, `_compound_category`)
+    and returns the requested drug's entry for it. Returns None -- no guess
+    -- for anything `_compound_category` itself returns None for."""
+    category = _compound_category(tpmt_phenotype, nudt15_phenotype)
+    if category is None:
+        return None
+    return _COMPOUND_TABLES_BY_DRUG[drug][category]
 
 
 def recommend_compound_thiopurine(
-    tpmt_result: PGxResult, nudt15_result: PGxResult, *, cache_dir: Optional[Path] = None
+    tpmt_result: PGxResult,
+    nudt15_result: PGxResult,
+    *,
+    drug: Optional[str] = None,
+    cache_dir: Optional[Path] = None,
 ) -> tuple[PGxResult, PGxResult]:
-    """Layer 4 step for the joint TPMT+NUDT15 mercaptopurine table (Table
-    2 -- see module docstring). Unlike `recommend()`, this needs BOTH
-    genes' already-computed `PGxResult`s at once, since CPIC's 2025/2026
-    guideline dosing tables are keyed on the joint phenotype, not either
-    gene alone (there is no "TPMT known, NUDT15 unknown" row).
+    """Layer 4 step for the joint TPMT+NUDT15 dosing tables (Tables 2-4 --
+    see module docstring). Unlike `recommend()`, this needs BOTH genes'
+    already-computed `PGxResult`s at once, since CPIC's 2025/2026 guideline
+    dosing tables are keyed on the joint phenotype, not either gene alone
+    (there is no "TPMT known, NUDT15 unknown" row).
+
+    `drug` selects among the three compound tables -- `"mercaptopurine"`
+    (default, unchanged from before this parameter existed), `"thioguanine"`,
+    or `"azathioprine"`. An unrecognized drug name is a caller error
+    (`ValueError`), the same "fail loudly, don't silently look like an
+    unconfident phenotype" policy `evidence.recommend()`'s own `drug`
+    parameter uses for CYP2C19's two pairings.
 
     Returns a `(tpmt_result, nudt15_result)` pair with the SAME
-    `RecommendationResult` attached to both -- one mercaptopurine
-    recommendation genuinely applies to the pair together, not to either
-    gene individually, so both copies carry identical `recommendation`
-    content by design, not duplication-by-accident.
+    `RecommendationResult` attached to both -- one recommendation genuinely
+    applies to the pair together, not to either gene individually, so both
+    copies carry identical `recommendation` content by design, not
+    duplication-by-accident.
 
     Falls through to returning both results UNCHANGED (same never-guess
     policy as `recommend()`) when either phenotype isn't SUPPORTED, or
-    isn't one of the three phenotype strings Table 2's logic recognizes
+    isn't one of the three phenotype strings this logic recognizes
     (ambiguous/indeterminate/unsupported-allele results on either gene
     never get a compound recommendation attached).
     """
@@ -772,12 +942,21 @@ def recommend_compound_thiopurine(
             f"NUDT15 result is for {nudt15_result.sample_id!r}"
         )
 
+    drug = drug or "mercaptopurine"
+    if drug not in _COMPOUND_TABLES_BY_DRUG:
+        raise ValueError(
+            f"no compound TPMT+NUDT15 recommendation table for drug={drug!r} -- known drug(s): "
+            f"{', '.join(_KNOWN_COMPOUND_THIOPURINE_DRUGS)}"
+        )
+
     if tpmt_result.phenotype.confidence != Confidence.SUPPORTED or (
         nudt15_result.phenotype.confidence != Confidence.SUPPORTED
     ):
         return tpmt_result, nudt15_result
 
-    entry = _compound_thiopurine_entry(tpmt_result.phenotype.phenotype, nudt15_result.phenotype.phenotype)
+    entry = _compound_thiopurine_entry(
+        tpmt_result.phenotype.phenotype, nudt15_result.phenotype.phenotype, drug
+    )
     if entry is None:
         return tpmt_result, nudt15_result
 

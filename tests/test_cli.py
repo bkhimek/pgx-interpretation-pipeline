@@ -271,6 +271,124 @@ def test_tpmt_and_nudt15_together_get_the_compound_recommendation():
         assert by_gene["NUDT15"]["gene_drug_relationship"]["drug"] == "mercaptopurine"
 
 
+def test_thiopurine_drug_flag_selects_the_thioguanine_table():
+    # --thiopurine-drug is a SELECTOR (unlike --cyp2c19-voriconazole, which
+    # is additive) -- see cli.py's own docstring, "NUDT15 and the compound
+    # TPMT+NUDT15 recommendation". Both TPMT and NUDT15 still get exactly
+    # one section each, just recommended for thioguanine instead of the
+    # default mercaptopurine.
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(tmp)
+        result = _run_cli(
+            [
+                "report",
+                "--vcf", str(ALL_NORMAL_VCF),
+                "--sample-id", "THIOG",
+                "--genes", "TPMT,NUDT15",
+                "--formats", "json",
+                "--evidence-cache-dir", str(EVIDENCE_CACHE_DIR),
+                "--thiopurine-drug", "thioguanine",
+                "--out-dir", str(out_dir),
+            ]
+        )
+        assert result.returncode == 0, result.stderr
+        payload = json.loads((out_dir / "THIOG.json").read_text())
+        assert len(payload["genes"]) == 2
+        by_gene = {g["gene"]: g for g in payload["genes"]}
+        assert by_gene["TPMT"]["gene_drug_relationship"]["drug"] == "thioguanine"
+        assert by_gene["NUDT15"]["gene_drug_relationship"]["drug"] == "thioguanine"
+        assert by_gene["TPMT"]["gene_drug_relationship"] == by_gene["NUDT15"]["gene_drug_relationship"]
+
+
+def test_thiopurine_drug_flag_selects_the_azathioprine_table():
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(tmp)
+        result = _run_cli(
+            [
+                "report",
+                "--vcf", str(ALL_NORMAL_VCF),
+                "--sample-id", "AZA",
+                "--genes", "TPMT,NUDT15",
+                "--formats", "json",
+                "--evidence-cache-dir", str(EVIDENCE_CACHE_DIR),
+                "--thiopurine-drug", "azathioprine",
+                "--out-dir", str(out_dir),
+            ]
+        )
+        assert result.returncode == 0, result.stderr
+        payload = json.loads((out_dir / "AZA.json").read_text())
+        by_gene = {g["gene"]: g for g in payload["genes"]}
+        assert by_gene["TPMT"]["gene_drug_relationship"]["drug"] == "azathioprine"
+        assert by_gene["NUDT15"]["gene_drug_relationship"]["drug"] == "azathioprine"
+
+
+def test_thiopurine_drug_flag_explicit_mercaptopurine_matches_omitting_it():
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(tmp)
+        result = _run_cli(
+            [
+                "report",
+                "--vcf", str(ALL_NORMAL_VCF),
+                "--sample-id", "MERC",
+                "--genes", "TPMT,NUDT15",
+                "--formats", "json",
+                "--evidence-cache-dir", str(EVIDENCE_CACHE_DIR),
+                "--thiopurine-drug", "mercaptopurine",
+                "--out-dir", str(out_dir),
+            ]
+        )
+        assert result.returncode == 0, result.stderr
+        payload = json.loads((out_dir / "MERC.json").read_text())
+        by_gene = {g["gene"]: g for g in payload["genes"]}
+        assert by_gene["TPMT"]["gene_drug_relationship"]["drug"] == "mercaptopurine"
+        assert by_gene["NUDT15"]["gene_drug_relationship"]["drug"] == "mercaptopurine"
+
+
+def test_thiopurine_drug_flag_is_a_noop_when_nudt15_not_requested():
+    # Selector only takes effect when the compound path is even reachable
+    # (both TPMT and NUDT15 requested) -- see cli.py's own docstring.
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(tmp)
+        result = _run_cli(
+            [
+                "report",
+                "--vcf", str(TPMT_NORMAL_VCF),
+                "--sample-id", "NOTHIO",
+                "--genes", "TPMT",
+                "--formats", "json",
+                "--evidence-cache-dir", str(EVIDENCE_CACHE_DIR),
+                "--thiopurine-drug", "thioguanine",
+                "--out-dir", str(out_dir),
+            ]
+        )
+        assert result.returncode == 0, result.stderr
+        payload = json.loads((out_dir / "NOTHIO.json").read_text())
+        assert len(payload["genes"]) == 1
+        # TPMT alone still goes through the ordinary per-gene recommend()
+        # path (its own single-gene azathioprine table), unaffected by a
+        # thiopurine-drug selector that only applies to the compound path.
+        assert payload["genes"][0]["gene_drug_relationship"]["drug"] == "azathioprine"
+
+
+def test_unknown_thiopurine_drug_fails_loudly_with_nonzero_exit():
+    with tempfile.TemporaryDirectory() as tmp:
+        result = _run_cli(
+            [
+                "report",
+                "--vcf", str(ALL_NORMAL_VCF),
+                "--sample-id", "BADDRUG",
+                "--genes", "TPMT,NUDT15",
+                "--formats", "json",
+                "--evidence-cache-dir", str(EVIDENCE_CACHE_DIR),
+                "--thiopurine-drug", "not-a-real-drug",
+                "--out-dir", tmp,
+            ]
+        )
+        assert result.returncode != 0
+        assert "not-a-real-drug" in result.stderr
+        assert not (Path(tmp) / "BADDRUG.json").exists()
+
+
 def test_cyp2c19_voriconazole_flag_adds_a_second_cyp2c19_section():
     # report.py's renderers have no gene-uniqueness assumption (confirmed
     # directly in cli.py's own docstring before choosing this design) --

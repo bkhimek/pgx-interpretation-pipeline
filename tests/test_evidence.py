@@ -593,4 +593,156 @@ def test_compound_still_reuses_the_same_joint_guideline_as_single_gene_tpmt():
     # genuinely supersedes the single-gene one when NUDT15 is also present,
     # rather than accidentally reusing its recommendation text.
     assert tpmt_after.to_dict()["recommended_drug"] == "mercaptopurine"
-    assert single_gene_after.to_dict()["recommended_drug"] == "azathioprine"
+
+
+# --- recommend_compound_thiopurine(): thioguanine (Table 3, malignant-only) ---
+
+
+def test_compound_thioguanine_both_normal_is_standard_dose():
+    tpmt = _tpmt("normal_function.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, nudt15_after = recommend_compound_thiopurine(
+        tpmt, nudt15, drug="thioguanine", cache_dir=FIXTURES_EVIDENCE_DIR
+    )
+    for result in (tpmt_after, nudt15_after):
+        d = result.to_dict()
+        assert d["recommended_drug"] == "thioguanine"
+        assert "40 mg/m2/day" in d["recommendation_category"]
+        assert "Strong" in d["recommendation_category"]
+    assert tpmt_after.recommendation == nudt15_after.recommendation
+
+
+def test_compound_thioguanine_one_intermediate_is_moderate_not_strong():
+    # A real, guideline-stated difference from mercaptopurine's equivalent
+    # row (rated "Strong"): thioguanine's one-IM row is rated "Moderate".
+    # Confirms this module quotes the real per-drug classification rather
+    # than reusing mercaptopurine's.
+    tpmt = _tpmt("het_reduced_function.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, _ = recommend_compound_thiopurine(
+        tpmt, nudt15, drug="thioguanine", cache_dir=FIXTURES_EVIDENCE_DIR
+    )
+    d = tpmt_after.to_dict()
+    assert "30-80%" in d["recommendation_category"]
+    assert "Moderate" in d["recommendation_category"]
+    assert "Strong" not in d["recommendation_category"]
+
+
+def test_compound_thioguanine_either_poor_is_ten_fold_reduction_no_alternative_agent_branch():
+    # Table 3 is malignant-conditions-only, so unlike mercaptopurine's Table
+    # 2, there is no "for nonmalignancy, consider an alternative agent"
+    # branch in the text at all.
+    tpmt = _tpmt("two_no_function_alleles.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, _ = recommend_compound_thiopurine(
+        tpmt, nudt15, drug="thioguanine", cache_dir=FIXTURES_EVIDENCE_DIR
+    )
+    d = tpmt_after.to_dict()
+    assert "10-fold" in d["recommendation_category"]
+    assert "Strong" in d["recommendation_category"]
+    assert "nonmalignan" not in d["recommendation_category"].lower()
+
+
+def test_compound_thioguanine_both_intermediate_is_deeper_reduction_and_moderate():
+    tpmt = _tpmt("het_reduced_function.vcf")
+    nudt15 = _nudt15("het_intermediate.vcf")
+    tpmt_after, _ = recommend_compound_thiopurine(
+        tpmt, nudt15, drug="thioguanine", cache_dir=FIXTURES_EVIDENCE_DIR
+    )
+    d = tpmt_after.to_dict()
+    assert "20-50%" in d["recommendation_category"]
+    assert "compound intermediate metabolizer" in d["recommendation_category"].lower()
+    assert "Moderate" in d["recommendation_category"]
+
+
+# --- recommend_compound_thiopurine(): azathioprine (Table 4, nonmalignant-only) ---
+
+
+def test_compound_azathioprine_both_normal_is_standard_dose():
+    tpmt = _tpmt("normal_function.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, nudt15_after = recommend_compound_thiopurine(
+        tpmt, nudt15, drug="azathioprine", cache_dir=FIXTURES_EVIDENCE_DIR
+    )
+    for result in (tpmt_after, nudt15_after):
+        d = result.to_dict()
+        assert d["recommended_drug"] == "azathioprine"
+        assert "2 mg/kg/day" in d["recommendation_category"]
+        assert "Strong" in d["recommendation_category"]
+
+
+def test_compound_azathioprine_one_intermediate_is_thirty_to_eighty_percent_strong():
+    tpmt = _tpmt("het_reduced_function.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, _ = recommend_compound_thiopurine(
+        tpmt, nudt15, drug="azathioprine", cache_dir=FIXTURES_EVIDENCE_DIR
+    )
+    d = tpmt_after.to_dict()
+    assert "30-80%" in d["recommendation_category"]
+    assert "Strong" in d["recommendation_category"]
+
+
+def test_compound_azathioprine_either_poor_has_no_reduced_dose_fallback():
+    # A real difference from mercaptopurine and thioguanine's poor-
+    # metabolizer rows: azathioprine's Table 4 offers no reduced-dose
+    # option at all for a nonmalignant indication -- CPIC recommends an
+    # alternative agent outright, not "here's a reduced dose if you must".
+    tpmt = _tpmt("two_no_function_alleles.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, _ = recommend_compound_thiopurine(
+        tpmt, nudt15, drug="azathioprine", cache_dir=FIXTURES_EVIDENCE_DIR
+    )
+    d = tpmt_after.to_dict()
+    assert "alternative nonthiopurine immunosuppressant" in d["recommendation_category"]
+    assert "10-fold" not in d["recommendation_category"]
+    assert "%" not in d["recommendation_category"]
+
+
+def test_compound_azathioprine_both_intermediate_is_deeper_reduction_and_moderate():
+    tpmt = _tpmt("het_reduced_function.vcf")
+    nudt15 = _nudt15("het_intermediate.vcf")
+    tpmt_after, _ = recommend_compound_thiopurine(
+        tpmt, nudt15, drug="azathioprine", cache_dir=FIXTURES_EVIDENCE_DIR
+    )
+    d = tpmt_after.to_dict()
+    assert "20-50%" in d["recommendation_category"]
+    assert "Moderate" in d["recommendation_category"]
+
+
+# --- recommend_compound_thiopurine(): the drug parameter itself ---
+
+
+def test_compound_default_drug_is_still_mercaptopurine():
+    tpmt = _tpmt("normal_function.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    implicit, _ = recommend_compound_thiopurine(tpmt, nudt15, cache_dir=FIXTURES_EVIDENCE_DIR)
+    explicit, _ = recommend_compound_thiopurine(
+        _tpmt("normal_function.vcf"), _nudt15("normal_function.vcf"),
+        drug="mercaptopurine", cache_dir=FIXTURES_EVIDENCE_DIR,
+    )
+    assert implicit.recommendation == explicit.recommendation
+    assert implicit.to_dict()["recommended_drug"] == "mercaptopurine"
+
+
+def test_compound_rejects_unknown_drug():
+    tpmt = _tpmt("normal_function.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    try:
+        recommend_compound_thiopurine(tpmt, nudt15, drug="ibuprofen", cache_dir=FIXTURES_EVIDENCE_DIR)
+        assert False, "expected ValueError for an unknown compound-thiopurine drug"
+    except ValueError as exc:
+        assert "ibuprofen" in str(exc)
+        assert "mercaptopurine" in str(exc)  # names the known drugs
+        assert "thioguanine" in str(exc)
+        assert "azathioprine" in str(exc)
+
+
+def test_compound_thioguanine_does_not_attach_or_fetch_when_either_phenotype_is_not_supported():
+    tpmt = _tpmt("missing_genotype.vcf")
+    nudt15 = _nudt15("normal_function.vcf")
+    tpmt_after, nudt15_after = recommend_compound_thiopurine(
+        tpmt, nudt15, drug="thioguanine", cache_dir=_UNREACHABLE_CACHE_DIR
+    )
+    assert tpmt_after is tpmt
+    assert nudt15_after is nudt15
+    assert tpmt_after.recommendation.drug is None

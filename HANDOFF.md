@@ -735,3 +735,32 @@ The closure defers evaluation of the path string until each task actually runs, 
 **Next session should:**
 1. Sync this batch, review the diff, commit, push.
 2. Natural next steps, per the established roadmap: another CYP2C19 drug pairing if useful (the `drug`-parameter/multi-result design now generalizes to a third pairing with no further schema work); NUDT15's compound Tables 3/4; v2 scope planning (CYP2D6 feasibility writeup, container/Conda profile) as lower priority.
+
+---
+
+## 2026-08-20 — Session 22 (NUDT15 compound tables: thioguanine + azathioprine)
+
+**What happened:** the user picked "NUDT15 compound tables" from an `AskUserQuestion` menu of next-step options -- closing the real, already-documented gap Session 19 left open: only CPIC's mercaptopurine table (Table 2) was implemented for the joint TPMT+NUDT15 recommendation, while the parallel thioguanine (Table 3) and azathioprine (Table 4) tables were out of scope.
+
+**Research:** re-read CPIC's 2025/2026 TPMT+NUDT15 guideline PDF (same source already cited for Table 2) for Tables 3 and 4 in full, quoted directly. Found a genuine structural asymmetry CPIC itself imposes, not an implementation simplification: Table 2 (mercaptopurine) covers both malignant and nonmalignant conditions in one table with indication-branching text; Table 3 (thioguanine) covers malignant conditions ONLY; Table 4 (azathioprine) covers nonmalignant conditions ONLY. Classification strengths also genuinely differ per drug for the identical phenotype category -- e.g. thioguanine's "one Intermediate Metabolizer" row is Moderate, not Strong like mercaptopurine's -- and azathioprine's either-Poor-Metabolizer row has no reduced-dose fallback at all ("Consider an alternative nonthiopurine immunosuppressant therapy," full stop), a more risk-averse stance than the other two drugs' dose-reduction rows.
+
+**Design:** the existing single hardcoded mercaptopurine-only table in `evidence.py` was refactored into a shared `_compound_category()` function (factoring out the four-row-shape logic all three CPIC tables share structurally: both-Normal / one-Intermediate / either-Poor / both-Intermediate-compound) plus a `_COMPOUND_TABLES_BY_DRUG` dict keyed by drug name, mirroring the `drug: Optional[str] = None` parameter pattern already established for CYP2C19's `recommend()` in Session 21. `recommend_compound_thiopurine()` gained the same `drug` parameter (default `None` → `"mercaptopurine"`, fully backward compatible), validating against a `_KNOWN_COMPOUND_THIOPURINE_DRUGS` tuple and raising `ValueError` naming all three known drugs on an unrecognized one.
+
+At the CLI layer, a real design question was worked through explicitly rather than just copying the `--cyp2c19-voriconazole` precedent: should the new flag be additive (stack multiple drug sections, like CYP2C19's) or a selector (choose exactly one)? Decided on a selector (`--thiopurine-drug {mercaptopurine,thioguanine,azathioprine}`, default mercaptopurine) because a compound recommendation already attaches to TWO `PGxResult`s at once (TPMT and NUDT15 together) -- an additive design would mean generating up to three TPMT/NUDT15 result pairs and rendering up to six sections for what is fundamentally one clinical question asked with a different drug in mind, a real complexity jump the CYP2C19 case didn't have (that flag only ever adds a second section to one gene). The library itself (`recommend_compound_thiopurine(..., drug=...)`) still supports calling it multiple times for a caller who genuinely wants more than one drug's guidance.
+
+**Implemented:**
+- `pgx_interpreter/evidence.py`: `_compound_category()`, `_COMPOUND_MERCAPTOPURINE_TABLE`/`_COMPOUND_THIOGUANINE_TABLE`/`_COMPOUND_AZATHIOPRINE_TABLE`, `_COMPOUND_TABLES_BY_DRUG`, `_KNOWN_COMPOUND_THIOPURINE_DRUGS`, `_compound_thiopurine_entry()`. `recommend_compound_thiopurine()` gained the `drug` parameter. Module docstring extended with the full Table 3/Table 4 citations and the malignant-only/nonmalignant-only structural note. 14 new tests in `tests/test_evidence.py`.
+- `pgx_interpreter/cli.py`: new `--thiopurine-drug` selector flag (argparse `choices=`, default `None`). `_recommend_compound_or_warn()` and `run_report()` gained a `drug`/`thiopurine_drug` pass-through parameter. Module docstring extended with the selector-vs-additive design rationale above. 6 new CLI-level subprocess tests, including the unknown-drug `ValueError`/nonzero-exit case and the no-op-when-NUDT15-not-requested case.
+- `main.nf`/`nextflow.config`: `--thiopurine_drug` param added (default `null`, meaning "use mercaptopurine") and wired through to the CLI invocation, kept in sync with the CLI flag per this project's established discipline.
+- `docs/GENE_SCOPE.md`: NUDT15's Tier 2 paragraph rewritten -- the now-false "only mercaptopurine is implemented" sentence removed, replaced with all three tables' citations and the real structural/classification-strength differences between them. `README.md`'s status line updated to describe all three drugs and the selector.
+
+**Verification done this session:** full test suite, both runners -- 231/231 passing (up from 215). Packaged and verified via a fresh zip extraction + full test re-run (both runners) + three real CLI smoke tests: thioguanine's standard-dose row, azathioprine's standard-dose row, and the unrecognized-drug case exiting nonzero with `notarealdrug` named in stderr -- all confirmed correct against the hand-derived expected text from the real CPIC tables.
+
+**Not done yet (deliberately deferred, not an oversight):**
+- The compound path still requires BOTH TPMT and NUDT15 in one report; there is still no way to request more than one thiopurine drug's guidance in a single CLI invocation (see the selector-vs-additive design note above -- a real, considered scope decision, not an oversight).
+- The pediatric voriconazole table (CYP2C19 Table 2) remains out of scope, unchanged from Session 21.
+- The PharmCAT live comparison from Session 18 is still pending the user's own run.
+
+**Next session should:**
+1. Sync this batch, review the diff, commit, push.
+2. Natural next steps, per the established roadmap: another CYP2C19 drug pairing if useful; v2 scope planning (CYP2D6 feasibility writeup, container/Conda profile for `main.nf`) as the main remaining lower-priority item -- most of this project's real, previously-open gene/drug-pairing gaps are now closed.
