@@ -38,6 +38,7 @@ Not a validated clinical diagnostic system, not an autonomous prescribing system
 - `THIRD_PARTY_DATA.md` — quick-reference summary of the above
 - `docs/GENE_SCOPE.md` — per-gene allele coverage, defining variants, and explicit known limitations
 - `docs/ARCHITECTURE_REVIEW_V01.md` — Architecture Review 1 (after TPMT + DPYD + SLCO1B1): what's universal vs. gene-specific, what schema fields turned out unused, and a concrete refactor recommendation for CYP2C19
+- `docs/ARCHITECTURE_REVIEW_V02.md` — Architecture Review 2 (after CYP2C19 + NUDT15 + the evidence/report/CLI layers + multi-drug pairings + the compound two-gene recommendation): answers AR1's own closing question, confirms `models.py` has had zero schema changes since Phase 6 despite three genuinely new architectural situations, and flags one overdue action item (`schema.validate()` still not wired into the real pipeline)
 - `docs/VALIDATION.md` — Phase 7: unit test coverage review, real GeT-RM reference-material cross-validation (all four genes: TPMT, DPYD, CYP2C19, SLCO1B1), and a documented PharmCAT comparison
 - `docs/PHARMCAT_LIVE_COMPARISON_RUNBOOK.md` — exact steps to run a live PharmCAT comparison on a machine with real network access, since the Cowork sandbox this project was built in cannot (see `docs/VALIDATION.md` §4's infeasibility note)
 - `docs/CYP2D6_FEASIBILITY.md` — why CYP2D6 is out of scope, worked through in real technical detail against PharmVar's structural-variant catalog and published specialist-caller concordance data, not just asserted
