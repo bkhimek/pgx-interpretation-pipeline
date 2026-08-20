@@ -66,6 +66,30 @@ previously listed as interim -- TPMT/SLCO1B1's dosage-inferred-phase notes
 and DPYD's HapB3 disagreement note each lacking a dedicated field -- were
 resolved by this same phase's `interpretation_notes` addition and are
 intentionally not repeated here; see GENE_SCOPE.md's Phase 6 update.
+
+## schema.validate() is now wired in here (Architecture Review 2 follow-up)
+
+Architecture Review 1 (`docs/ARCHITECTURE_REVIEW_V01.md` §4) flagged that
+`schema.py`'s `PGX_RESULT_JSON_SCHEMA`/`validate()` -- built in Phase 1
+specifically to catch a malformed `PGxResult.to_dict()` shape -- was never
+actually exercised against a real gene module's output anywhere in the
+real pipeline, only in one hand-built `tests/test_models.py` example.
+Architecture Review 2 confirmed this was still true two phases later and
+called it genuinely overdue, not just open. `build_report()` below now
+calls `schema.validate()` once per result, at the one point every
+`PGxResult` this project produces already passes through regardless of
+which gene called it or how many output formats get rendered afterward --
+exactly the wiring point both reviews suggested, rather than duplicating
+the check once per renderer (`_gene_section()` is called up to five times
+per result, once per format; validating there would mean redundant,
+repeated validation of the same object). A validation failure raises
+`ValueError` naming the gene, sample, and every problem found, the same
+"fail loudly with specifics" convention `build_report()`'s own
+sample-id-mismatch check above already uses -- a real validation failure
+here means this project's own code produced a `PGxResult` its own schema
+doesn't recognize (e.g. a future field added to `to_dict()` without a
+matching `schema.py` update), which is this project's bug to catch and fix,
+not a data-quality issue to report gracefully to an end user.
 """
 from __future__ import annotations
 
@@ -77,6 +101,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
+from pgx_interpreter import schema as schema_mod
 from pgx_interpreter.models import PGxResult
 
 SOFTWARE_DISCLAIMER = (
@@ -215,6 +240,19 @@ def build_report(
             f"sample_id={sample_id!r} does not match the sample_id(s) actually present in "
             f"results: {sorted(sample_ids)}"
         )
+
+    # See module docstring, "schema.validate() is now wired in here" -- the
+    # one place every PGxResult this project produces already passes
+    # through, regardless of gene or output format, so validated exactly
+    # once per result rather than once per renderer.
+    for r in results:
+        problems = schema_mod.validate(r.to_dict())
+        if problems:
+            raise ValueError(
+                f"PGxResult for gene={r.gene!r} sample_id={r.sample_id!r} failed schema "
+                f"validation -- this is this project's own bug to fix, not a data-quality "
+                f"issue: {'; '.join(problems)}"
+            )
 
     return Report(
         sample_id=sample_id,

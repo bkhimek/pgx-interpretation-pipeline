@@ -113,6 +113,59 @@ def test_build_report_accepts_explicit_generated_at_for_reproducibility():
     assert rep.generated_at == "2026-08-17T00:00:00+00:00"
 
 
+# --- build_report(): schema.validate() wiring (Architecture Review 1 §4 /
+# Architecture Review 2 §4, "worth wiring in... once the Phase 6 report
+# layer exists" -- carried out this session). Every other test in this
+# module already exercises the "real PGxResult passes validation cleanly"
+# path implicitly, since build_report() now validates unconditionally; the
+# two tests below make that coverage explicit and prove the raise path
+# actually fires, rather than relying on it never having been triggered.
+
+
+def test_build_report_accepts_a_real_multi_gene_result_set_without_raising():
+    # Explicit, not just implied by every other passing test in this file:
+    # five real gene calls (four distinct calling shapes -- TPMT's dosage
+    # table, DPYD's four-independent-loci model, SLCO1B1's dosage table,
+    # CYP2C19's three-independent-loci model) all produce a
+    # schema-conformant PGxResult.to_dict(), confirmed by build_report()
+    # not raising.
+    results = (
+        _tpmt("normal_function.vcf", "HG002"),
+        _dpyd("normal_function.vcf", "HG002"),
+        _slco1b1("normal_function.vcf", "HG002"),
+        _cyp2c19("normal_function.vcf", "HG002"),
+    )
+    rep = report.build_report(results)
+    assert len(rep.results) == 4
+
+
+def test_build_report_raises_on_a_result_that_fails_schema_validation():
+    # A real PGxResult can never actually fail this check today (Confidence/
+    # PhaseStatus/GenomeBuild are constrained enums and every required field
+    # is a real dataclass field) -- this check exists specifically to catch
+    # FUTURE drift between PGxResult.to_dict()'s shape and schema.py's
+    # PGX_RESULT_JSON_SCHEMA (e.g. a new field added to one but not the
+    # other), which is exactly the kind of bug a real gene-module test
+    # fixture can't manufacture. A minimal duck-typed stand-in with a
+    # deliberately broken to_dict() exercises the actual wiring -- that
+    # build_report() calls schema.validate() and raises with specifics --
+    # without needing a real gene module to somehow produce invalid output.
+    class _BrokenResult:
+        sample_id = "BROKEN"
+        gene = "FAKEGENE"
+
+        def to_dict(self):
+            return {"sample_id": "BROKEN", "gene": "FAKEGENE"}  # missing every other required field
+
+    try:
+        report.build_report((_BrokenResult(),))
+        assert False, "expected ValueError for a schema-invalid PGxResult"
+    except ValueError as exc:
+        message = str(exc)
+        assert "FAKEGENE" in message and "BROKEN" in message
+        assert "missing required field" in message
+
+
 # --- to_json(): sections 1-10 ---
 
 
