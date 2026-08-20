@@ -76,6 +76,9 @@ def helpMessage() {
                                 (default: ${params.formats}; docx needs python-docx installed)
       --with_recommendations   true/false -- attach Tier 2 drug recommendations (default: ${params.with_recommendations})
       --evidence_cache_dir     Override the Tier 2 evidence cache directory
+      --cyp2c19_voriconazole   true/false -- add a second CYP2C19 section recommended for voriconazole
+                                instead of the default clopidogrel (default: ${params.cyp2c19_voriconazole});
+                                no-op unless CYP2C19 is in --genes and recommendations are enabled
 
     Example (using this repo's own test fixtures, no external data needed):
       nextflow run main.nf --input assets/samplesheet_example.csv \\
@@ -108,8 +111,9 @@ process PGX_REPORT {
     path("${sample_id}.*"), emit: report_files
 
     script:
-    def rec_flag   = params.with_recommendations ? '--with-recommendations' : '--no-recommendations'
-    def cache_arg  = params.evidence_cache_dir ? "--evidence-cache-dir '${params.evidence_cache_dir}'" : ''
+    def rec_flag    = params.with_recommendations ? '--with-recommendations' : '--no-recommendations'
+    def cache_arg   = params.evidence_cache_dir ? "--evidence-cache-dir '${params.evidence_cache_dir}'" : ''
+    def vori_flag   = params.cyp2c19_voriconazole ? '--cyp2c19-voriconazole' : ''
     """
     PYTHONPATH="${projectDir}" python3 -m pgx_interpreter.cli report \\
         --vcf '${vcf}' \\
@@ -119,6 +123,7 @@ process PGX_REPORT {
         --formats '${params.formats}' \\
         ${rec_flag} \\
         ${cache_arg} \\
+        ${vori_flag} \\
         --out-dir .
     """
 }

@@ -271,6 +271,58 @@ def test_tpmt_and_nudt15_together_get_the_compound_recommendation():
         assert by_gene["NUDT15"]["gene_drug_relationship"]["drug"] == "mercaptopurine"
 
 
+def test_cyp2c19_voriconazole_flag_adds_a_second_cyp2c19_section():
+    # report.py's renderers have no gene-uniqueness assumption (confirmed
+    # directly in cli.py's own docstring before choosing this design) --
+    # this flag should produce TWO "CYP2C19" sections, one per drug.
+    cyp2c19_normal_vcf = REPO_ROOT / "tests" / "fixtures" / "cyp2c19" / "normal_function.vcf"
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(tmp)
+        result = _run_cli(
+            [
+                "report",
+                "--vcf", str(cyp2c19_normal_vcf),
+                "--sample-id", "VORI",
+                "--genes", "CYP2C19",
+                "--formats", "json,tsv",
+                "--evidence-cache-dir", str(EVIDENCE_CACHE_DIR),
+                "--cyp2c19-voriconazole",
+                "--out-dir", str(out_dir),
+            ]
+        )
+        assert result.returncode == 0, result.stderr
+        payload = json.loads((out_dir / "VORI.json").read_text())
+        cyp2c19_sections = [g for g in payload["genes"] if g["gene"] == "CYP2C19"]
+        assert len(cyp2c19_sections) == 2
+        drugs = {s["gene_drug_relationship"]["drug"] for s in cyp2c19_sections}
+        assert drugs == {"clopidogrel", "voriconazole"}
+
+        rows = list(csv.DictReader(io.StringIO((out_dir / "VORI.tsv").read_text()), delimiter="\t"))
+        assert len(rows) == 2
+        assert {r["recommended_drug"] for r in rows} == {"clopidogrel", "voriconazole"}
+
+
+def test_cyp2c19_voriconazole_flag_is_a_noop_when_cyp2c19_not_requested():
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(tmp)
+        result = _run_cli(
+            [
+                "report",
+                "--vcf", str(TPMT_NORMAL_VCF),
+                "--sample-id", "NOVORI",
+                "--genes", "TPMT",
+                "--formats", "json",
+                "--evidence-cache-dir", str(EVIDENCE_CACHE_DIR),
+                "--cyp2c19-voriconazole",
+                "--out-dir", str(out_dir),
+            ]
+        )
+        assert result.returncode == 0, result.stderr
+        payload = json.loads((out_dir / "NOVORI.json").read_text())
+        assert len(payload["genes"]) == 1
+        assert payload["genes"][0]["gene"] == "TPMT"
+
+
 def test_written_file_paths_are_printed_to_stdout():
     # main.nf needs a predictable, parseable way to know what got written --
     # one absolute/relative path per line on stdout, nothing else.

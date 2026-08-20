@@ -708,3 +708,30 @@ The closure defers evaluation of the path string until each task actually runs, 
 **Next session should:**
 1. Sync this batch, review the diff, commit, push.
 2. Natural next steps, per Session 18/19's roadmap: CYP2C19+voriconazole or another CYP2C19-guideline drug pairing; NUDT15 thioguanine/azathioprine compound tables (Tables 3/4, currently out of scope -- see Session 19); v2 scope planning (CYP2D6 feasibility writeup, container/Conda profile for `main.nf`) as lower priority.
+
+---
+
+## 2026-08-20 — Session 21 (CYP2C19 + voriconazole, second drug pairing)
+
+**What happened:** the user picked CYP2C19+voriconazole from Session 20's own roadmap, framed as the lowest-effort remaining option since CYP2C19's Layer 1-3 logic already exists.
+
+**A real design question worked through before writing any code:** every gene so far has exactly one Tier 2 drug pairing, and `PGxResult.recommendation` holds exactly one `RecommendationResult`. CYP2C19+voriconazole is this project's first *second* pairing for an existing gene. Two designs were considered: (1) changing `PGxResult`/`recommendation` to hold multiple recommendations (a real schema change touching every renderer and every existing test), or (2) keeping the one-recommendation-per-result shape and letting a report contain two independent `PGxResult`s that happen to share `gene="CYP2C19"`. Checked `report.py` directly before choosing -- `build_report()`/`to_json()`/`to_tsv()`/etc. have no gene-uniqueness assumption anywhere (confirmed by reading the code, not assumed), so option (2) needed zero changes to `models.py` or `report.py`. Chosen for exactly that reason: smaller, safer, and it makes two CYP2C19-for-two-drugs sections render identically to two different genes, which is arguably the more honest representation anyway (a gene-drug pair, not a gene alone, is what a recommendation actually attaches to -- `evidence.py`'s own module docstring has said this since Phase 5).
+
+**Research:** CPIC's real 2016 CYP2C19+voriconazole guideline (Moriyama et al. 2017, PMID 27981572), guideline ID `PA166161537`, fetched directly from ClinPGx's live API. Confirmed Table 1 (adult) in full, quoted directly. Real, interesting content: CYP2C19 activates clopidogrel (a prodrug) but clears voriconazole directly, so ultrarapid/rapid metabolizers get a plain standard-dose clopidogrel recommendation but an alternative-agent voriconazole recommendation -- literally opposite clinical guidance from the same phenotype, depending on which drug is in play. Also found a real, CPIC-stated asymmetry within the voriconazole table itself: Normal and Intermediate Metabolizer get the identical therapeutic action (standard of care dosing) but different classification strength (Strong vs. Moderate), since the Intermediate tier's own diplotype examples include the provisionally-classified `*2/*17` genotype.
+
+**Implemented:**
+- `pgx_interpreter/evidence.py`: new `_CYP2C19_VORICONAZOLE_RECOMMENDATIONS` table (Table 1, adult only -- the parallel pediatric Table 2 is a real, documented out-of-scope gap, this project's schema has no patient-age field). `recommend()` gained a `drug: Optional[str] = None` parameter (default `None` = each gene's original/primary pairing, fully backward compatible); `_entry_for()` now validates the requested drug against a new `_KNOWN_DRUGS_BY_GENE` dict and raises `ValueError` on an unknown pairing (e.g. `drug="ibuprofen"` for CYP2C19, or `drug="voriconazole"` for TPMT) rather than silently behaving like "no confident phenotype." 15 new tests in `tests/test_evidence.py` (47 total now, up from 37), including explicit backward-compatibility checks (`drug=None` and `drug="clopidogrel"` produce identical results) and both `ValueError` cases. New fixture `tests/fixtures/evidence/PA166161537.json`.
+- `pgx_interpreter/cli.py`: new `--cyp2c19-voriconazole` flag. When set (and CYP2C19 is requested and recommendations are enabled), `run_report()` adds a SECOND, independent CYP2C19 section to the report, recommended for voriconazole, alongside the ordinary clopidogrel one -- implementing the report.py-has-no-gene-uniqueness-assumption design above. No-op otherwise (CYP2C19 not requested, or `--no-recommendations`). `_recommend_or_warn()` gained a `drug` pass-through parameter. 2 new CLI-level subprocess tests.
+- `main.nf`/`nextflow.config`: `--cyp2c19_voriconazole` param added and wired through to the CLI invocation, kept in sync with the CLI flag per this project's established discipline.
+- `docs/GENE_SCOPE.md`: CYP2C19 section extended with the new pairing's full citation and scoping decision. `README.md`'s status line updated.
+
+**Verification done this session:** full test suite, both runners -- all passing (94/94 across `test_cli.py`/`test_evidence.py`/`test_report.py` alone, all new tests passing on the first run against hand-derived expected outcomes from the real guideline table). Packaged and verified via a fresh zip extraction + full test re-run + a real CLI smoke test confirming the two-CYP2C19-sections output actually renders correctly in both JSON and TSV.
+
+**Not done yet (deliberately deferred, not an oversight):**
+- The pediatric voriconazole table (Table 2) remains out of scope -- this project's schema has no patient-age field.
+- NUDT15's thioguanine/azathioprine compound tables (Tables 3/4) remain out of scope, unchanged from Session 19.
+- The PharmCAT live comparison from Session 18 is still pending the user's own run.
+
+**Next session should:**
+1. Sync this batch, review the diff, commit, push.
+2. Natural next steps, per the established roadmap: another CYP2C19 drug pairing if useful (the `drug`-parameter/multi-result design now generalizes to a third pairing with no further schema work); NUDT15's compound Tables 3/4; v2 scope planning (CYP2D6 feasibility writeup, container/Conda profile) as lower priority.

@@ -254,6 +254,59 @@ directly to Table 1's ACS/PCI column, all rated "Strong":
     contraindication." (Strong)
   - Poor Metabolizer: "Avoid clopidogrel if possible. Use prasugrel or
     ticagrelor at standard dose if no contraindication." (Strong)
+
+**CYP2C19's second drug pairing: voriconazole** (guideline `PA166161537`)
+-- CPIC's 2016 guideline (Moriyama et al. 2017, *Clin Pharmacol Ther*
+102(1):45-51, PMID 27981572), Table 1 ("Dosing recommendations for
+voriconazole treatment based on CYP2C19 phenotype for adult patients"),
+fetched directly from ClinPGx's live `guidelineAnnotation` JSON,
+2026-08-20. This is this project's first gene with more than one Tier 2
+drug pairing -- CYP2C19 is metabolically central to both an antiplatelet
+(clopidogrel, a prodrug CYP2C19 must *activate*) and an antifungal
+(voriconazole, a drug CYP2C19 *clears*), so the same phenotype can imply
+opposite clinical urgency depending on which drug is in play (e.g. a Poor
+Metabolizer under-activates clopidogrel into an ineffective antiplatelet,
+but over-accumulates voriconazole into a toxicity risk). `recommend()`
+gained a `drug` parameter for exactly this (see its own docstring) --
+`_entry_for()` now validates the requested drug against
+`_KNOWN_DRUGS_BY_GENE` and raises `ValueError` on an unknown pairing,
+rather than letting a typo silently look like "no confident phenotype."
+
+**A real scoping decision, the same pattern as the clopidogrel table
+above:** the 2016 guideline publishes two parallel tables -- Table 1 for
+adult patients and Table 2 for pediatric patients (<18 years), with
+different recommendation text/classification for rapid and poor
+metabolizers specifically (pediatric rapid metabolizers get a
+standard-dose-plus-monitoring recommendation instead of an
+alternative-agent recommendation; pediatric poor metabolizers' alternative
+agent list omits isavuconazole, per a 2023 guideline update). This module
+implements **only Table 1 (adult)** -- this project's schema has no
+patient-age field to route to the pediatric table correctly even if it
+were implemented, and adult dosing is the more broadly applicable default.
+The pediatric table is a real, out-of-scope limitation, not silently
+dropped nuance -- documented here and in `docs/GENE_SCOPE.md`.
+
+This module's five producible phenotype categories all map directly to
+Table 1, with genuinely mixed classification strengths (unlike the
+clopidogrel table, where every tier is "Strong") -- quoted directly:
+
+  - Ultrarapid Metabolizer: "Choose an alternative agent that is not
+    dependent on CYP2C19 metabolism as primary therapy in lieu of
+    voriconazole. Such agents include isavuconazole, liposomal amphotericin
+    B, and posaconazole." (Moderate; CPIC notes this tier's recommendation
+    is extrapolated from `*1/*17` data, not directly studied)
+  - Rapid Metabolizer: same alternative-agent text as Ultrarapid. (Moderate)
+  - Normal Metabolizer: "Initiate therapy with recommended standard of care
+    dosing." (Strong)
+  - Intermediate Metabolizer: same standard-of-care text as Normal --
+    same action, but a lower "Moderate" classification, since CPIC's own
+    diplotype examples for this tier include the provisionally-classified
+    `*2/*17` genotype (footnote d: "*17* is unable to completely
+    compensate for the no function *2*"). (Moderate)
+  - Poor Metabolizer: same alternative-agent text as Ultrarapid/Rapid,
+    plus: "If voriconazole is considered the most appropriate agent based
+    on clinical advice, administer at a preferably lower than standard
+    dosage with careful therapeutic drug monitoring." (Moderate)
 """
 from __future__ import annotations
 
@@ -559,6 +612,58 @@ _CYP2C19_RECOMMENDATIONS: dict[str, _RecommendationEntry] = {
     ),
 }
 
+# --- CYP2C19 + voriconazole, Table 1 (adult patients only -- see module
+# docstring for the pediatric-table scoping decision) ---
+_CYP2C19_VORICONAZOLE_GUIDELINE_ID = "PA166161537"
+
+_CYP2C19_VORICONAZOLE_RECOMMENDATIONS: dict[str, _RecommendationEntry] = {
+    "Ultrarapid Metabolizer": _RecommendationEntry(
+        drug="voriconazole",
+        recommendation=(
+            "Choose an alternative agent that is not dependent on CYP2C19 metabolism as primary "
+            "therapy in lieu of voriconazole (e.g., isavuconazole, liposomal amphotericin B, or "
+            "posaconazole). Recommendation based on data extrapolated from patients with the "
+            "CYP2C19*1/*17 genotype."
+        ),
+        classification="Moderate",
+        guideline_id=_CYP2C19_VORICONAZOLE_GUIDELINE_ID,
+    ),
+    "Rapid Metabolizer": _RecommendationEntry(
+        drug="voriconazole",
+        recommendation=(
+            "Choose an alternative agent that is not dependent on CYP2C19 metabolism as primary "
+            "therapy in lieu of voriconazole (e.g., isavuconazole, liposomal amphotericin B, or "
+            "posaconazole)."
+        ),
+        classification="Moderate",
+        guideline_id=_CYP2C19_VORICONAZOLE_GUIDELINE_ID,
+    ),
+    "Normal Metabolizer": _RecommendationEntry(
+        drug="voriconazole",
+        recommendation="Initiate therapy with recommended standard of care dosing.",
+        classification="Strong",
+        guideline_id=_CYP2C19_VORICONAZOLE_GUIDELINE_ID,
+    ),
+    "Intermediate Metabolizer": _RecommendationEntry(
+        drug="voriconazole",
+        recommendation="Initiate therapy with recommended standard of care dosing.",
+        classification="Moderate",
+        guideline_id=_CYP2C19_VORICONAZOLE_GUIDELINE_ID,
+    ),
+    "Poor Metabolizer": _RecommendationEntry(
+        drug="voriconazole",
+        recommendation=(
+            "Choose an alternative agent that is not dependent on CYP2C19 metabolism as primary "
+            "therapy in lieu of voriconazole (e.g., isavuconazole, liposomal amphotericin B, or "
+            "posaconazole). If voriconazole is considered the most appropriate agent based on "
+            "clinical advice, administer at a preferably lower than standard dosage with careful "
+            "therapeutic drug monitoring."
+        ),
+        classification="Moderate",
+        guideline_id=_CYP2C19_VORICONAZOLE_GUIDELINE_ID,
+    ),
+}
+
 
 # --- TPMT + NUDT15 (compound) + mercaptopurine, Table 2 (see module
 # docstring for full citation and the mercaptopurine-only scope decision) ---
@@ -693,11 +798,39 @@ def recommend_compound_thiopurine(
     )
 
 
-def _entry_for(result: PGxResult) -> Optional[_RecommendationEntry]:
+_KNOWN_DRUGS_BY_GENE: dict[str, tuple[str, ...]] = {
+    "TPMT": ("azathioprine",),
+    "DPYD": ("fluorouracil",),
+    "SLCO1B1": ("simvastatin",),
+    # CYP2C19 is this project's first gene with more than one Tier 2 drug
+    # pairing -- see module docstring, "CYP2C19's second drug pairing".
+    "CYP2C19": ("clopidogrel", "voriconazole"),
+}
+
+
+def _entry_for(result: PGxResult, *, drug: Optional[str] = None) -> Optional[_RecommendationEntry]:
     """Looks up the hand-verified entry for this result's gene + exact
     phenotype/activity-score, or returns None if there isn't one -- no
     fuzzy matching, no guessing at an ambiguous or partial phenotype
-    string."""
+    string.
+
+    `drug` selects which table to use for genes with more than one Tier 2
+    pairing. Defaults to each gene's original/primary drug (`None` behaves
+    exactly as it always has -- fully backward compatible). Requesting a
+    drug a gene has no table for is a caller error, not a silent
+    fall-through to "no recommendation" -- `_KNOWN_DRUGS_BY_GENE` makes
+    this an explicit `ValueError` rather than letting a typo'd drug name
+    (or a gene that genuinely has no such pairing) look identical to an
+    ambiguous/insufficient-data phenotype that legitimately has no
+    recommendation.
+    """
+    known = _KNOWN_DRUGS_BY_GENE.get(result.gene, ())
+    if drug is not None and known and drug not in known:
+        raise ValueError(
+            f"{result.gene} has no Tier 2 recommendation table for drug={drug!r} "
+            f"-- known drug(s) for this gene: {', '.join(known)}"
+        )
+
     if result.gene == "TPMT":
         return _TPMT_RECOMMENDATIONS.get(result.phenotype.phenotype)
 
@@ -715,12 +848,16 @@ def _entry_for(result: PGxResult) -> Optional[_RecommendationEntry]:
         return _SLCO1B1_RECOMMENDATIONS.get(result.phenotype.phenotype)
 
     if result.gene == "CYP2C19":
-        return _CYP2C19_RECOMMENDATIONS.get(result.phenotype.phenotype)
+        if drug == "voriconazole":
+            return _CYP2C19_VORICONAZOLE_RECOMMENDATIONS.get(result.phenotype.phenotype)
+        return _CYP2C19_RECOMMENDATIONS.get(result.phenotype.phenotype)  # default/None -> clopidogrel
 
     return None
 
 
-def recommend(result: PGxResult, *, cache_dir: Optional[Path] = None) -> PGxResult:
+def recommend(
+    result: PGxResult, *, drug: Optional[str] = None, cache_dir: Optional[Path] = None
+) -> PGxResult:
     """Layer 4 step (Plan §5 Phase 5): given an already-computed `PGxResult`
     from `call_tpmt`/`call_dpyd`/`call_slco1b1`/`call_cyp2c19` (Layers 1-3), attach a drug
     recommendation if -- and only if -- this module has a hand-verified
@@ -731,11 +868,20 @@ def recommend(result: PGxResult, *, cache_dir: Optional[Path] = None) -> PGxResu
     phenotype string this table doesn't recognize all fall through here
     rather than being guessed at.
 
+    `drug` selects among a gene's Tier 2 pairings when it has more than one
+    (currently only CYP2C19: `"clopidogrel"` (default) or `"voriconazole"`
+    -- see module docstring, "CYP2C19's second drug pairing"). Every other
+    gene has exactly one pairing, so `drug=None`'s default behavior is
+    completely unchanged from before this parameter existed. Passing a
+    `drug` a gene has no table for raises `ValueError` (see `_entry_for`) --
+    a caller mistake, not something to silently treat as "no confident
+    phenotype."
+
     A network fetch (or cache read) only happens when a matching entry is
     found -- an ambiguous/insufficient-data result never touches the
     network at all.
     """
-    entry = _entry_for(result)
+    entry = _entry_for(result, drug=drug)
     if entry is None:
         return result
 

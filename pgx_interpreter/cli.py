@@ -29,6 +29,23 @@ table; a NUDT15-only report gets no Tier 2 recommendation at all, since
 none of CPIC's tables have a "NUDT15 alone" row -- a real, documented
 limitation, not an oversight).
 
+## CYP2C19's second drug pairing (voriconazole)
+
+`evidence.recommend()` gained a `drug` parameter the same session
+voriconazole was added -- CYP2C19 is this project's first gene with more
+than one Tier 2 pairing (clopidogrel and voriconazole), and a `PGxResult`
+only ever carries one `RecommendationResult`. Rather than changing that
+schema, `--cyp2c19-voriconazole` below adds a SECOND, independent CYP2C19
+`PGxResult` to the report -- recommended for voriconazole instead of the
+default clopidogrel -- alongside the ordinary one. `report.py`'s renderers
+have no gene-uniqueness assumption (confirmed directly before choosing this
+design, not assumed), so a report with both flags produces two distinct
+"CYP2C19" sections/rows, one per drug, exactly like two different genes
+would render side by side. This only takes effect when CYP2C19 is actually
+among `--genes` and `--with-recommendations` is in effect; otherwise it is
+a silent no-op, the same "only applies when its precondition is actually
+met" behavior as the TPMT+NUDT15 compound path above.
+
 ## Why one process per sample, not one process per gene
 
 Nextflow's natural unit of parallelism is a process invocation, and the four
@@ -138,14 +155,20 @@ def _parse_format_list(raw: str) -> tuple[str, ...]:
     return formats
 
 
-def _recommend_or_warn(result, *, cache_dir: Optional[Path], stderr) -> "report_mod.PGxResult":
+def _recommend_or_warn(
+    result, *, cache_dir: Optional[Path], stderr, drug: Optional[str] = None
+) -> "report_mod.PGxResult":
     """Wraps `evidence.recommend()` per the module docstring's offline-
-    friendly-but-not-guessing policy above."""
+    friendly-but-not-guessing policy above. `drug` is forwarded to
+    `recommend()` unchanged -- see this module's docstring, "CYP2C19's
+    second drug pairing" -- and defaults to None, i.e. each gene's
+    original/primary pairing, same as always."""
     try:
-        return recommend(result, cache_dir=cache_dir)
+        return recommend(result, drug=drug, cache_dir=cache_dir)
     except EvidenceFetchError as exc:
+        drug_note = f" (drug={drug!r})" if drug is not None else ""
         print(
-            f"[pgx-cli WARNING] Tier 2 recommendation unavailable for {result.gene} "
+            f"[pgx-cli WARNING] Tier 2 recommendation unavailable for {result.gene}{drug_note} "
             f"(sample {result.sample_id}): {exc}. Continuing without a drug recommendation "
             "for this gene -- the phenotype/diplotype call above is unaffected.",
             file=stderr,
@@ -182,11 +205,19 @@ def run_report(
     with_recommendations: bool,
     evidence_cache_dir: Optional[Path],
     out_dir: Path,
+    cyp2c19_voriconazole: bool = False,
     stderr=sys.stderr,
 ) -> list[Path]:
     """Layers 1-4 + report assembly + rendering, for one sample. Returns the
     list of files written. Pure enough to unit-test directly (no argparse,
-    no process exit) -- `main()` below is a thin wrapper around this."""
+    no process exit) -- `main()` below is a thin wrapper around this.
+
+    `cyp2c19_voriconazole` adds a second, independent CYP2C19 section to
+    the report, recommended for voriconazole instead of the default
+    clopidogrel -- see this module's docstring, "CYP2C19's second drug
+    pairing". No-op unless CYP2C19 is in `genes` and `with_recommendations`
+    is True.
+    """
     if not vcf_path.is_file():
         raise FileNotFoundError(f"VCF not found: {vcf_path}")
 
@@ -201,6 +232,12 @@ def run_report(
     for gene in genes:
         caller = GENE_CALLERS[gene]
         results_by_gene[gene] = caller(observed_variants, sample_id, genome_build)
+
+    # Captured before any recommendation is attached, so the
+    # cyp2c19_voriconazole branch below can recommend a SECOND time (for a
+    # different drug) off the same Layer 1-3 result, rather than off the
+    # already-clopidogrel-recommended one.
+    cyp2c19_raw_result = results_by_gene.get("CYP2C19")
 
     if with_recommendations:
         if "TPMT" in results_by_gene and "NUDT15" in results_by_gene:
@@ -225,6 +262,13 @@ def run_report(
                 )
 
     results = [results_by_gene[gene] for gene in genes]
+
+    if with_recommendations and cyp2c19_voriconazole and cyp2c19_raw_result is not None:
+        voriconazole_result = _recommend_or_warn(
+            cyp2c19_raw_result, cache_dir=evidence_cache_dir, stderr=stderr, drug="voriconazole"
+        )
+        results.append(voriconazole_result)
+
     report = report_mod.build_report(tuple(results), sample_id=sample_id)
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -298,6 +342,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
     report_parser.add_argument(
         "--out-dir", type=Path, default=Path("results"), help="Directory to write report file(s) into."
     )
+    report_parser.add_argument(
+        "--cyp2c19-voriconazole",
+        dest="cyp2c19_voriconazole",
+        action="store_true",
+        default=False,
+        help=(
+            "Add a second, independent CYP2C19 section recommended for voriconazole instead of "
+            "the default clopidogrel (see evidence.py's module docstring, 'CYP2C19's second drug "
+            "pairing'). No-op unless CYP2C19 is in --genes and recommendations are enabled."
+        ),
+    )
 
     return parser
 
@@ -325,6 +380,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 with_recommendations=args.with_recommendations,
                 evidence_cache_dir=args.evidence_cache_dir,
                 out_dir=args.out_dir,
+                cyp2c19_voriconazole=args.cyp2c19_voriconazole,
             )
         except FileNotFoundError as exc:
             print(f"[pgx-cli ERROR] {exc}", file=sys.stderr)

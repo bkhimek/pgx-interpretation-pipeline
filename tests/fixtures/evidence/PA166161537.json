@@ -1,0 +1,115 @@
+{
+  "guideline_id": "PA166161537",
+  "retrieved_at": "2026-08-20T00:00:00+00:00",
+  "payload": {
+    "data": {
+      "objCls": "Guideline Annotation",
+      "id": "PA166161537",
+      "name": "Annotation of CPIC Guideline for voriconazole and CYP2C19",
+      "alternateDrugAvailable": true,
+      "cancerGenome": false,
+      "crossReferences": [],
+      "descriptiveVideoId": "U1PKEF6M9oM",
+      "dosingInformation": true,
+      "hasTestingInfo": false,
+      "history": [
+        {
+          "id": 1448530671,
+          "date": "2016-12-02T00:00:00-08:00",
+          "type": "Create",
+          "version": 0
+        },
+        {
+          "id": 1449717119,
+          "date": "2018-08-23T17:04:13.204-07:00",
+          "description": "Updated video link",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1452137944,
+          "date": "2023-06-22T22:53:52.017-07:00",
+          "description": "Updated supplemental table links",
+          "type": "Update",
+          "version": 0
+        },
+        {
+          "id": 1452312800,
+          "date": "2023-11-30T11:44:22.326-08:00",
+          "description": "updated text in table 2 for pediatric population, removed isavuconazole",
+          "type": "Update",
+          "version": 0
+        }
+      ],
+      "literature": [
+        {
+          "id": 15098243,
+          "title": "Clinical Pharmacogenetics Implementation Consortium (CPIC) Guidelines for CYP2C19 and Voriconazole Therapy.",
+          "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5474211",
+          "crossReferences": [
+            {
+              "id": 1449293324,
+              "resource": "PubMed Central",
+              "resourceId": "PMC5474211",
+              "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5474211"
+            },
+            {
+              "id": 1449293323,
+              "resource": "PubMed",
+              "resourceId": "27981572",
+              "_url": "https://www.ncbi.nlm.nih.gov/pubmed/27981572"
+            },
+            {
+              "id": 1449293325,
+              "resource": "DOI",
+              "resourceId": "10.1002/cpt.583",
+              "_url": "http://dx.doi.org/10.1002%2Fcpt.583"
+            }
+          ],
+          "objCls": "Literature",
+          "pubDate": "2017-07-01T00:00:00-07:00",
+          "terms": [
+            {
+              "id": 1454108620,
+              "resource": "ClinPGx Tags",
+              "term": "CPIC",
+              "termId": "pgkbTags:1454108620"
+            },
+            {
+              "id": 1451577480,
+              "resource": "PGx Paper Types",
+              "term": "Implementation",
+              "termId": "pgxPaperTypes:1451577480"
+            }
+          ],
+          "type": "Literature"
+        }
+      ],
+      "otherPrescribingGuidance": true,
+      "pediatric": true,
+      "recommendation": true,
+      "relatedAlleles": [],
+      "relatedChemicals": [
+        {
+          "objCls": "Chemical",
+          "id": "PA10233",
+          "name": "voriconazole"
+        }
+      ],
+      "relatedGenes": [
+        {
+          "objCls": "Gene",
+          "id": "PA124",
+          "symbol": "CYP2C19",
+          "name": "cytochrome P450 family 2 subfamily C member 19"
+        }
+      ],
+      "source": "CPIC",
+      "summaryMarkdown": {
+        "id": 1448432518,
+        "html": "<p>The CPIC dosing guideline for voriconazole recommends selecting an alternative agent that is not dependent on CYP2C19 metabolism in adults who are CYP2C19 ultrarapid metabolizers, rapid metabolizers or poor metabolizers. In pediatric patients, an alternative agent should be used in patients who are ultrarapid metabolizers or poor metabolizers. In pediatric rapid metabolizers, therapy should be initiated at recommended standard case dosing, then therapeutic dosing monitoring should be used to titrate dose to therapeutic trough concentrations.</p>\n"
+      }
+    },
+    "status": "success"
+  }
+}

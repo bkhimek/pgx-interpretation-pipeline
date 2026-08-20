@@ -140,6 +140,14 @@ def test_fetch_guideline_reads_cyp2c19_fixture_from_cache_without_network():
     assert snapshot.retrieved_at == "2026-08-18T00:00:00+00:00"
 
 
+def test_fetch_guideline_reads_cyp2c19_voriconazole_fixture_from_cache_without_network():
+    snapshot = fetch_guideline("PA166161537", cache_dir=FIXTURES_EVIDENCE_DIR)
+    assert snapshot.guideline_id == "PA166161537"
+    assert "CYP2C19" in snapshot.related_genes
+    assert "voriconazole" in snapshot.related_chemicals
+    assert snapshot.retrieved_at == "2026-08-20T00:00:00+00:00"
+
+
 def test_fetch_guideline_uses_cache_on_repeat_calls_without_force_refresh():
     # Reproducibility (Plan §4): calling twice against the same cache_dir
     # returns the identical stamped retrieved_at both times, proving the
@@ -357,6 +365,115 @@ def test_recommend_does_not_attach_or_fetch_for_cyp2c19_unsupported_allele():
     after = recommend(before, cache_dir=_UNREACHABLE_CACHE_DIR)
     assert after is before
     assert after.recommendation.drug is None
+
+
+# --- recommend(): CYP2C19 + voriconazole (Table 1, adult patients) ---
+# CYP2C19's second Tier 2 drug pairing -- the first gene in this project
+# with more than one. Selected via recommend(..., drug="voriconazole").
+
+
+def test_recommend_cyp2c19_voriconazole_normal_metabolizer_standard_of_care():
+    result = recommend(
+        _cyp2c19("normal_function.vcf"), drug="voriconazole", cache_dir=FIXTURES_EVIDENCE_DIR
+    )
+    d = result.to_dict()
+    assert d["recommended_drug"] == "voriconazole"
+    assert "standard of care dosing" in d["recommendation_category"]
+    assert "Strong" in d["recommendation_category"]
+    assert (
+        d["recommendation_guideline_source"] == "Annotation of CPIC Guideline for voriconazole and CYP2C19"
+    )
+    assert d["recommendation_evidence_source"] == "CPIC via ClinPGx guidelineAnnotation PA166161537"
+    assert d["recommendation_evidence_version"] == "2026-08-20"
+
+
+def test_recommend_cyp2c19_voriconazole_ultrarapid_and_rapid_choose_an_alternative_agent():
+    # Opposite direction from clopidogrel: an ultrarapid/rapid metabolizer
+    # CLEARS voriconazole too fast to reach therapeutic concentrations, so
+    # CPIC recommends an alternative agent here -- whereas the same
+    # phenotype gets a plain standard-dose clopidogrel recommendation,
+    # since clopidogrel is a prodrug CYP2C19 activates rather than clears.
+    ultrarapid = recommend(
+        _cyp2c19("hom_alt_star17.vcf"), drug="voriconazole", cache_dir=FIXTURES_EVIDENCE_DIR
+    ).to_dict()
+    rapid = recommend(
+        _cyp2c19("het_star17.vcf"), drug="voriconazole", cache_dir=FIXTURES_EVIDENCE_DIR
+    ).to_dict()
+    assert "alternative agent" in ultrarapid["recommendation_category"]
+    assert "extrapolated" in ultrarapid["recommendation_category"]  # UM-specific caveat, Table 1 footnote g
+    assert "alternative agent" in rapid["recommendation_category"]
+    assert "Moderate" in ultrarapid["recommendation_category"]
+    assert "Moderate" in rapid["recommendation_category"]
+
+
+def test_recommend_cyp2c19_voriconazole_intermediate_metabolizer_still_gets_standard_dosing():
+    # Same therapeutic action as Normal Metabolizer (standard of care
+    # dosing) but a lower classification strength -- CPIC's own Table 1
+    # rates this tier "Moderate", not "Strong", unlike Normal. A real,
+    # guideline-stated distinction, not an inconsistency in this module.
+    result = recommend(_cyp2c19("het_star2.vcf"), drug="voriconazole", cache_dir=FIXTURES_EVIDENCE_DIR)
+    d = result.to_dict()
+    assert d["phenotype"] == "Intermediate Metabolizer"
+    assert "standard of care dosing" in d["recommendation_category"]
+    assert "Moderate" in d["recommendation_category"]
+
+
+def test_recommend_cyp2c19_voriconazole_poor_metabolizer_choose_an_alternative_agent():
+    result = recommend(_cyp2c19("hom_alt_star2.vcf"), drug="voriconazole", cache_dir=FIXTURES_EVIDENCE_DIR)
+    d = result.to_dict()
+    assert d["phenotype"] == "Poor Metabolizer"
+    assert "alternative agent" in d["recommendation_category"]
+    assert "therapeutic drug monitoring" in d["recommendation_category"]
+
+
+def test_recommend_cyp2c19_default_drug_is_still_clopidogrel_not_voriconazole():
+    # Backward compatibility, stated as an explicit test rather than just
+    # assumed: omitting `drug` must behave exactly as it did before this
+    # parameter existed.
+    result = recommend(_cyp2c19("normal_function.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR)
+    assert result.to_dict()["recommended_drug"] == "clopidogrel"
+
+
+def test_recommend_does_not_attach_or_fetch_for_cyp2c19_voriconazole_insufficient_data():
+    before = _cyp2c19("missing_genotype.vcf")
+    after = recommend(before, drug="voriconazole", cache_dir=_UNREACHABLE_CACHE_DIR)
+    assert after is before
+    assert after.recommendation.drug is None
+
+
+def test_recommend_rejects_unknown_drug_for_a_gene():
+    # A typo'd or nonexistent drug name for a gene must fail loudly, not
+    # silently behave like an ambiguous/insufficient-data phenotype that
+    # legitimately has no recommendation.
+    before = _cyp2c19("normal_function.vcf")
+    try:
+        recommend(before, drug="ibuprofen", cache_dir=FIXTURES_EVIDENCE_DIR)
+        assert False, "expected ValueError for an unknown drug pairing"
+    except ValueError as exc:
+        assert "CYP2C19" in str(exc)
+        assert "ibuprofen" in str(exc)
+
+
+def test_recommend_rejects_drug_for_a_gene_with_only_one_pairing():
+    # TPMT only has azathioprine -- requesting anything else (even a real
+    # drug name, just not one this project pairs with TPMT) is a caller
+    # mistake, the same as CYP2C19's ibuprofen case above.
+    before = _tpmt("normal_function.vcf")
+    try:
+        recommend(before, drug="voriconazole", cache_dir=FIXTURES_EVIDENCE_DIR)
+        assert False, "expected ValueError for a drug TPMT has no table for"
+    except ValueError as exc:
+        assert "TPMT" in str(exc)
+        assert "azathioprine" in str(exc)  # names the one drug that IS valid
+
+
+def test_recommend_explicit_drug_equal_to_default_matches_omitting_it():
+    # drug="clopidogrel" (CYP2C19's default) must produce an identical
+    # result to drug=None -- the parameter genuinely defaults to it, not
+    # just coincidentally produces the same-looking text.
+    implicit = recommend(_cyp2c19("normal_function.vcf"), cache_dir=FIXTURES_EVIDENCE_DIR)
+    explicit = recommend(_cyp2c19("normal_function.vcf"), drug="clopidogrel", cache_dir=FIXTURES_EVIDENCE_DIR)
+    assert implicit.recommendation == explicit.recommendation
 
 
 # --- schema: a populated recommendation still validates cleanly ---
