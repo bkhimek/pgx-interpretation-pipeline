@@ -16,7 +16,7 @@ VCF → variant → allele/haplotype → diplotype → functional phenotype → 
 
 **v1 genes:** TPMT, DPYD, SLCO1B1, CYP2C19, NUDT15 — all five now implemented.
 
-**Explicitly out of scope:** CYP2D6 — it requires specialist structural-variant-aware calling (CYP2D7 homology, CNV, hybrid alleles) that this project deliberately isn't attempting. See `docs/PGX_FOUNDATIONS.md` and the project plan §9 for why.
+**Explicitly out of scope:** CYP2D6 — it requires specialist structural-variant-aware calling (CYP2D7 homology, CNV, hybrid alleles) that this project deliberately isn't attempting. See `docs/PGX_FOUNDATIONS.md` and the project plan §9 for the summary, and `docs/CYP2D6_FEASIBILITY.md` for the full technical writeup: real PharmVar structural-variant citations, published concordance numbers for the specialist tools built for exactly this problem (none reach 100%, even on enriched validation sets), and what a real v2 implementation would concretely require.
 
 ## Research questions
 
@@ -40,6 +40,7 @@ Not a validated clinical diagnostic system, not an autonomous prescribing system
 - `docs/ARCHITECTURE_REVIEW_V01.md` — Architecture Review 1 (after TPMT + DPYD + SLCO1B1): what's universal vs. gene-specific, what schema fields turned out unused, and a concrete refactor recommendation for CYP2C19
 - `docs/VALIDATION.md` — Phase 7: unit test coverage review, real GeT-RM reference-material cross-validation (all four genes: TPMT, DPYD, CYP2C19, SLCO1B1), and a documented PharmCAT comparison
 - `docs/PHARMCAT_LIVE_COMPARISON_RUNBOOK.md` — exact steps to run a live PharmCAT comparison on a machine with real network access, since the Cowork sandbox this project was built in cannot (see `docs/VALIDATION.md` §4's infeasibility note)
+- `docs/CYP2D6_FEASIBILITY.md` — why CYP2D6 is out of scope, worked through in real technical detail against PharmVar's structural-variant catalog and published specialist-caller concordance data, not just asserted
 
 ## Architecture
 
